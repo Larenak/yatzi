@@ -8,7 +8,7 @@ import {
   isJokerRoll,
   isYahtzee,
   simulateRivalTurn,
-} from "./game.js?v=1.5.2";
+} from "./game.js?v=1.5.8";
 
 const translations = {
   ru: {
@@ -17,7 +17,10 @@ const translations = {
     youShort: "вы",
     categories: "КОМБИНАЦИИ",
     howToPlay: "Как играть?",
-    virtualNotice: "Соперник управляется игрой",
+    settingsTitle: "Настройки",
+    soundLabel: "Звук",
+    soundEnabled: "Вкл.",
+    soundDisabled: "Выкл.",
     soundOn: "Выключить звук",
     soundOff: "Включить звук",
     paused: "Пауза",
@@ -42,13 +45,6 @@ const translations = {
     roll: "БРОСИТЬ",
     reroll: "ЕЩЁ РАЗ",
     chooseScore: "ВЫБЕРИТЕ СЧЁТ",
-    startHint: "Бросьте кости, затем оставьте нужные",
-    holdHint: "Нажмите на кость, чтобы оставить · осталось бросков: {count}",
-    scoreHint: "Выберите свободную красную ячейку",
-    thinkingHint: "{name} бросает кости…",
-    rivalRoll: "{name}: бросок {roll} из 3",
-    rivalKeeps: "{name} оставляет кубики: {count}",
-    rivalResult: "Выпало: {dice}",
     held: "СТОП",
     bonus: "БОНУС",
     playerScored: "{category}: +{score}",
@@ -87,7 +83,10 @@ const translations = {
     youShort: "you",
     categories: "CATEGORIES",
     howToPlay: "How to play?",
-    virtualNotice: "The rival is controlled by the game",
+    settingsTitle: "Settings",
+    soundLabel: "Sound",
+    soundEnabled: "On",
+    soundDisabled: "Off",
     soundOn: "Mute sound",
     soundOff: "Turn sound on",
     paused: "Paused",
@@ -112,13 +111,6 @@ const translations = {
     roll: "ROLL",
     reroll: "ROLL AGAIN",
     chooseScore: "CHOOSE SCORE",
-    startHint: "Roll the dice, then hold the ones you need",
-    holdHint: "Tap a die to hold · {count} rolls left",
-    scoreHint: "Choose an open red cell",
-    thinkingHint: "{name} is rolling…",
-    rivalRoll: "{name}: roll {roll} of 3",
-    rivalKeeps: "{name} holds dice: {count}",
-    rivalResult: "Rolled: {dice}",
     held: "HOLD",
     bonus: "BONUS",
     playerScored: "{category}: +{score}",
@@ -156,6 +148,11 @@ const translations = {
 const RIVAL_NAMES = [
   "Mila", "DiceFox", "Vega", "Nika", "MaxRoll", "Luna", "Dima_Dice", "SunnyCat",
   "Arsen", "Kira", "КосмоКот", "Лис_в_кедах", "Рыжик", "Nastya", "Tim", "LuckyOwl",
+  "Бублик", "Vovan", "Mira", "JackPot", "Кубыч", "Polina", "FoxFire", "Denis",
+  "Зефирка", "RollKing", "Sonya", "Maxim", "PandaRoll", "КатяКэт", "Leo", "Sova",
+  "Арбузик", "MoonDice", "Roma", "Anya", "BearRoll", "Морковка", "NickSix", "Alisa",
+  "Кексик", "TurboCat", "Ilya", "Eva", "DiceNinja", "Тучка", "Gleb", "Vika",
+  "Персик", "RollStar", "Margo", "Sema", "WhiteFox", "Кнопка", "Alex", "Lera",
 ];
 
 const PIPS = {
@@ -189,11 +186,11 @@ const elements = {
   upperScoreList: document.querySelector("#upperScoreList"),
   lowerScoreList: document.querySelector("#lowerScoreList"),
   diceStage: document.querySelector("#diceStage"),
-  diceHint: document.querySelector("#diceHint"),
   rollButton: document.querySelector("#rollButton"),
   rollLabel: document.querySelector("#rollLabel"),
   rollMarks: [...document.querySelectorAll("#rollMarks i")],
-  rulesButton: document.querySelector("#rulesButton"),
+  settingsButton: document.querySelector("#settingsButton"),
+  settingsPanel: document.querySelector("#settingsPanel"),
   footerRulesButton: document.querySelector("#footerRulesButton"),
   newGameButton: document.querySelector("#newGameButton"),
   rulesModal: document.querySelector("#rulesModal"),
@@ -251,9 +248,9 @@ function storeSoundPreference() {
 function updateSoundButton() {
   if (!elements.soundButton) return;
   elements.soundButton.classList.toggle("muted", !soundEnabled);
-  elements.soundButton.setAttribute("aria-pressed", String(!soundEnabled));
+  elements.soundButton.setAttribute("aria-pressed", String(soundEnabled));
   elements.soundButton.setAttribute("aria-label", soundEnabled ? t.soundOn : t.soundOff);
-  elements.soundIcon.textContent = soundEnabled ? "♫" : "×";
+  elements.soundIcon.textContent = soundEnabled ? t.soundEnabled : t.soundDisabled;
 }
 
 function createAudioEngine() {
@@ -265,9 +262,9 @@ function createAudioEngine() {
   const masterGain = context.createGain();
   const effectsGain = context.createGain();
   const musicGain = context.createGain();
-  masterGain.gain.value = .68;
-  effectsGain.gain.value = .46;
-  musicGain.gain.value = .11;
+  masterGain.gain.value = .76;
+  effectsGain.gain.value = .54;
+  musicGain.gain.value = .12;
   effectsGain.connect(masterGain);
   musicGain.connect(masterGain);
   masterGain.connect(context.destination);
@@ -363,6 +360,13 @@ function playHoldSound(held) {
     if (!context) return;
     scheduleTone(held ? 760 : 430, .11, .09, "triangle");
     scheduleTone(held ? 980 : 560, .08, .045, "sine", .045);
+  });
+}
+
+function playDiceHoverSound(index) {
+  void ensureAudioReady().then((context) => {
+    if (!context) return;
+    scheduleTone(315 + index * 20, .045, .018, "sine");
   });
 }
 
@@ -680,9 +684,15 @@ function applyTranslations() {
     const translation = t[node.dataset.i18n];
     if (typeof translation === "string") node.textContent = translation;
   });
-  elements.rulesButton.setAttribute("aria-label", lang === "ru" ? "Открыть правила" : "Open rules");
+  elements.settingsButton.setAttribute("aria-label", lang === "ru" ? "Открыть настройки" : "Open settings");
   elements.newGameButton.setAttribute("aria-label", lang === "ru" ? "Начать заново" : "Restart match");
   updateSoundButton();
+}
+
+function setSettingsOpen(open) {
+  elements.settingsPanel.hidden = !open;
+  elements.settingsButton.classList.toggle("active", open);
+  elements.settingsButton.setAttribute("aria-expanded", String(open));
 }
 
 function getRound() {
@@ -814,16 +824,12 @@ function renderHeader() {
 function renderControls() {
   if (state.rivalThinking) {
     elements.rollLabel.textContent = "…";
-    elements.diceHint.textContent = format(t.thinkingHint, { name: state.rivalNick });
   } else if (state.rollCount === 0) {
     elements.rollLabel.textContent = t.roll;
-    elements.diceHint.textContent = t.startHint;
   } else if (state.rollCount < 3) {
     elements.rollLabel.textContent = t.reroll;
-    elements.diceHint.textContent = format(t.holdHint, { count: 3 - state.rollCount });
   } else {
     elements.rollLabel.textContent = t.chooseScore;
-    elements.diceHint.textContent = t.scoreHint;
   }
 
   elements.rollButton.disabled = state.rollCount >= 3 || state.rolling || state.scoring || state.rivalThinking || state.paused;
@@ -913,7 +919,6 @@ async function showRivalHoldDecision(heldDice) {
   state.held = [...heldDice];
   render();
   const heldIndexes = heldDice.map((held, index) => held ? index : -1).filter((index) => index >= 0);
-  elements.diceHint.textContent = format(t.rivalKeeps, { name: state.rivalNick, count: heldIndexes.length });
   if (heldIndexes.length) playHoldSound(true);
   heldIndexes.forEach((dieIndex, order) => {
     const die = elements.diceStage.querySelector(`.die[data-index="${dieIndex}"]`);
@@ -945,9 +950,6 @@ async function playRivalTurn(token) {
     state.rollCount = rollIndex + 1;
     state.held = [...roll.held];
     await performDiceThrow(roll.dice, roll.held, 500);
-    elements.diceHint.textContent = rollIndex === 2
-      ? format(t.rivalResult, { dice: result.dice.join(" · ") })
-      : format(t.rivalRoll, { name: state.rivalNick, roll: rollIndex + 1 });
     if (rollIndex === 2) await wait(1050);
     else {
       await wait(330);
@@ -1022,9 +1024,7 @@ function resetMatch() {
 }
 
 function requestReset() {
-  const hasProgress = state.rollCount > 0 || Object.keys(state.playerScores).length > 0;
-  if (hasProgress) openModal(elements.resetModal);
-  else resetMatch();
+  openModal(elements.resetModal);
 }
 
 function openModal(modal) {
@@ -1057,6 +1057,11 @@ function attachEvents() {
   elements.app.addEventListener("pointerover", (event) => {
     const icon = event.target.closest(".category-icon[data-category-hint]");
     if (icon) showCategoryTooltip(icon);
+
+    const die = event.target.closest(".die:not(.held):not(:disabled)");
+    if (die && event.pointerType === "mouse" && !die.contains(event.relatedTarget)) {
+      playDiceHoverSound(Number(die.dataset.index));
+    }
   });
   elements.app.addEventListener("pointerout", (event) => {
     const icon = event.target.closest(".category-icon[data-category-hint]");
@@ -1081,17 +1086,22 @@ function attachEvents() {
     const scoreCell = event.target.closest(".player-cell");
     if (scoreCell) scorePlayerCategory(scoreCell.dataset.category);
   });
-  [elements.rulesButton, elements.footerRulesButton].forEach((button) => button.addEventListener("click", () => openModal(elements.rulesModal)));
+  elements.settingsButton.addEventListener("click", () => setSettingsOpen(elements.settingsPanel.hidden));
+  elements.footerRulesButton.addEventListener("click", () => openModal(elements.rulesModal));
   elements.newGameButton.addEventListener("click", requestReset);
   elements.confirmResetButton.addEventListener("click", resetMatch);
   elements.playAgainButton.addEventListener("click", resetMatch);
   elements.soundButton.addEventListener("click", () => setSoundEnabled(!soundEnabled));
+  document.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest(".settings-control")) setSettingsOpen(false);
+  }, { passive: true });
   document.querySelectorAll("[data-close-rules]").forEach((button) => button.addEventListener("click", () => closeModal(elements.rulesModal)));
   document.querySelectorAll("[data-close-reset]").forEach((button) => button.addEventListener("click", () => closeModal(elements.resetModal)));
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      if (!elements.rulesModal.hidden) closeModal(elements.rulesModal);
+      if (!elements.settingsPanel.hidden) setSettingsOpen(false);
+      else if (!elements.rulesModal.hidden) closeModal(elements.rulesModal);
       else if (!elements.resetModal.hidden) closeModal(elements.resetModal);
       return;
     }

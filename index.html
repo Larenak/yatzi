@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f08c77" />
     <meta name="description" content="Ятзи — быстрая дуэль в кости с виртуальным соперником." />
     <title>Ятзи — быстрая дуэль</title>
-    <link rel="stylesheet" href="styles.css?v=1.5.2" />
+    <link rel="stylesheet" href="styles.css?v=1.5.8" />
   </head>
   <body>
     <div class="ambient-particles" aria-hidden="true">
@@ -19,7 +19,16 @@
 
     <main class="game-shell" id="gameApp">
       <header class="duel-header">
-        <button class="circle-button back-button" id="rulesButton" type="button" aria-label="Открыть правила"><span aria-hidden="true">‹</span></button>
+        <div class="settings-control">
+          <button class="circle-button settings-button" id="settingsButton" type="button" aria-label="Открыть настройки" aria-controls="settingsPanel" aria-expanded="false"><span aria-hidden="true">⚙</span></button>
+          <div class="settings-panel" id="settingsPanel" hidden>
+            <strong data-i18n="settingsTitle">Настройки</strong>
+            <button class="settings-sound-row" id="soundButton" type="button" aria-pressed="true">
+              <span data-i18n="soundLabel">Звук</span>
+              <span class="settings-sound-state" id="soundIcon">Вкл.</span>
+            </button>
+          </div>
+        </div>
 
         <section class="duel-score" aria-label="Счёт дуэли">
           <span class="mode-ribbon" data-i18n="mode">БЫСТРАЯ ДУЭЛЬ</span>
@@ -50,9 +59,8 @@
         </div>
       </section>
 
-      <section class="dice-area" aria-labelledby="diceHint">
+      <section class="dice-area" aria-label="Игровые кости">
         <div class="dice-rack" id="diceStage" aria-label="Игровые кости"></div>
-        <p class="dice-hint" id="diceHint">Бросьте кости, затем оставьте нужные</p>
       </section>
 
       <button class="roll-button" id="rollButton" type="button">
@@ -62,8 +70,6 @@
 
       <footer class="game-footer">
         <button id="footerRulesButton" type="button" data-i18n="howToPlay">Как играть?</button>
-        <span data-i18n="virtualNotice">Соперник управляется игрой</span>
-        <button class="sound-toggle" id="soundButton" type="button" aria-label="Выключить звук"><span id="soundIcon" aria-hidden="true">♫</span></button>
       </footer>
 
       <div class="pause-cover" id="pauseCover" hidden><div><span>Ⅱ</span><strong data-i18n="paused">Пауза</strong></div></div>
@@ -118,6 +124,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="category-tooltip" id="categoryTooltip" role="tooltip" hidden></div>
-    <script type="module" src="app.js?v=1.5.2"></script>
+    <script type="module" src="app.js?v=1.5.8"></script>
   </body>
 </html>
