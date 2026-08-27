@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f08c77" />
+    <meta name="description" content="Ятзи — быстрая дуэль в кости с виртуальным соперником." />
+    <title>Ятзи — быстрая дуэль</title>
+    <link rel="stylesheet" href="styles.css?v=1.2.1" />
+  </head>
+  <body>
+    <div class="background-dice die-decoration-one" aria-hidden="true">⚄</div>
+    <div class="background-dice die-decoration-two" aria-hidden="true">⚂</div>
+
+    <main class="game-shell" id="gameApp">
+      <header class="duel-header">
+        <button class="circle-button back-button" id="rulesButton" type="button" aria-label="Открыть правила"><span aria-hidden="true">‹</span></button>
+
+        <section class="duel-score" aria-label="Счёт дуэли">
+          <span class="mode-ribbon" data-i18n="mode">БЫСТРАЯ ДУЭЛЬ</span>
+          <div class="competitor player-competitor"><span data-i18n="you">ВЫ</span><strong id="playerTotal">0</strong></div>
+          <div class="versus-mark">VS</div>
+          <div class="competitor rival-competitor"><span id="rivalName">Mila</span><strong id="rivalTotal">0</strong></div>
+        </section>
+
+        <button class="circle-button restart-button" id="newGameButton" type="button" aria-label="Начать заново"><span aria-hidden="true">↻</span></button>
+      </header>
+
+      <section class="turn-strip" aria-live="polite">
+        <span id="roundLabel">РАУНД 1 / 13</span>
+        <strong id="turnStatus">ВАШ ХОД</strong>
+      </section>
+
+      <section class="score-board" aria-label="Таблица очков">
+        <div class="board-head">
+          <span data-i18n="categories">КОМБИНАЦИИ</span>
+          <div class="score-key">
+            <i class="player-key"></i><span data-i18n="youShort">вы</span>
+            <i class="rival-key"></i><span id="rivalKeyName">Mila</span>
+          </div>
+        </div>
+        <div class="score-grid">
+          <section class="score-section upper-section" id="upperScoreList" aria-label="Верхняя секция"></section>
+          <section class="score-section lower-section" id="lowerScoreList" aria-label="Комбинации"></section>
+        </div>
+      </section>
+
+      <section class="dice-area" aria-labelledby="diceHint">
+        <div class="dice-rack" id="diceStage" aria-label="Игровые кости"></div>
+        <p class="dice-hint" id="diceHint">Бросьте кости, затем оставьте нужные</p>
+      </section>
+
+      <button class="roll-button" id="rollButton" type="button">
+        <span class="roll-label" id="rollLabel">БРОСИТЬ</span>
+        <span class="roll-marks" id="rollMarks" aria-label="Броски"><i>1</i><i>2</i><i>3</i></span>
+      </button>
+
+      <footer class="game-footer">
+        <button id="footerRulesButton" type="button" data-i18n="howToPlay">Как играть?</button>
+        <span data-i18n="virtualNotice">Соперник управляется игрой</span>
+      </footer>
+
+      <div class="pause-cover" id="pauseCover" hidden><div><span>Ⅱ</span><strong data-i18n="paused">Пауза</strong></div></div>
+    </main>
+
+    <div class="modal" id="rulesModal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle" hidden>
+      <div class="modal-backdrop" data-close-rules></div>
+      <section class="modal-card rules-card">
+        <button class="modal-close" type="button" data-close-rules aria-label="Закрыть">×</button>
+        <span class="modal-die" aria-hidden="true">⚄</span>
+        <p class="modal-eyebrow" data-i18n="rulesEyebrow">ПРАВИЛА ДУЭЛИ</p>
+        <h1 id="rulesTitle" data-i18n="rulesTitle">Три броска — один выбор</h1>
+        <ol>
+          <li data-i18n="rule1">Бросьте пять костей. За ход доступно до трёх бросков.</li>
+          <li data-i18n="rule2">Нажмите на удачные кости, чтобы оставить их перед перебросом.</li>
+          <li data-i18n="rule3">Запишите результат в одну свободную красную ячейку. Затем ход сделает виртуальный соперник.</li>
+        </ol>
+        <div class="rules-bonus"><strong data-i18n="bonusTitle">Бонус +35</strong><span data-i18n="bonusText">Наберите 63 очка в верхней секции.</span></div>
+        <button class="modal-primary" type="button" data-close-rules data-i18n="continueGame">Продолжить игру</button>
+      </section>
+    </div>
+
+    <div class="modal" id="resetModal" role="dialog" aria-modal="true" aria-labelledby="resetTitle" hidden>
+      <div class="modal-backdrop" data-close-reset></div>
+      <section class="modal-card compact-card">
+        <button class="modal-close" type="button" data-close-reset aria-label="Закрыть">×</button>
+        <span class="modal-die restart-symbol" aria-hidden="true">↻</span>
+        <p class="modal-eyebrow" data-i18n="newMatch">НОВАЯ ДУЭЛЬ</p>
+        <h1 id="resetTitle" data-i18n="resetTitle">Начать заново?</h1>
+        <p data-i18n="resetText">Текущий счёт будет сброшен, а соперник изменится.</p>
+        <div class="modal-actions">
+          <button class="modal-secondary" type="button" data-close-reset data-i18n="cancel">Отмена</button>
+          <button class="modal-primary" id="confirmResetButton" type="button" data-i18n="restart">Начать</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal" id="finishModal" role="dialog" aria-modal="true" aria-labelledby="finishTitle" hidden>
+      <div class="modal-backdrop"></div>
+      <section class="modal-card finish-card">
+        <div class="finish-crown" aria-hidden="true">✦</div>
+        <p class="modal-eyebrow" data-i18n="matchComplete">ДУЭЛЬ ЗАВЕРШЕНА</p>
+        <h1 id="finishTitle">Победа!</h1>
+        <div class="final-versus">
+          <div><span data-i18n="you">ВЫ</span><strong id="finishPlayerScore">0</strong></div><b>:</b>
+          <div><span id="finishRivalName">Mila</span><strong id="finishRivalScore">0</strong></div>
+        </div>
+        <p class="finish-message" id="finishMessage"></p>
+        <button class="modal-primary" id="playAgainButton" type="button" data-i18n="playAgain">Новый соперник</button>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="app.js?v=1.2.1"></script>
+  </body>
+</html>

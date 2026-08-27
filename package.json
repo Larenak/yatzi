@@ -1,0 +1,10 @@
+{
+  "name": "yatzy-fast-game",
+  "version": "1.2.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "python -m http.server 8080"
+  }
+}
