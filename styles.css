@@ -1502,6 +1502,20 @@ button.score-cell:disabled:not(.scored) {
   min-height: 57px;
   font-size: 15px;
   letter-spacing: .02em;
+  transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.tutorial-start:hover,
+.tutorial-start:focus-visible {
+  outline: 0;
+  background: #f06c62;
+  box-shadow: 0 0 0 4px rgba(255,213,116,.96), 0 9px 20px rgba(111,52,48,.22);
+  transform: translateY(-1px);
+}
+
+.tutorial-start:active {
+  box-shadow: 0 0 0 3px rgba(255,213,116,.96), 0 4px 10px rgba(111,52,48,.2);
+  transform: translateY(1px);
 }
 
 .modal-primary,
@@ -2095,6 +2109,8 @@ button:focus-visible {
   body::after { animation-duration: 15s !important; animation-iteration-count: infinite !important; }
   .background-dice { animation-duration: 16s !important; animation-iteration-count: infinite !important; }
   .ambient-particles i { animation-duration: 17s !important; animation-iteration-count: infinite !important; }
+  .die.throwing { animation-duration: var(--throw-duration, 610ms) !important; animation-iteration-count: 1 !important; }
+  .die.throwing .die-face { animation-duration: var(--throw-duration, 610ms) !important; animation-iteration-count: 1 !important; }
   .die.die-tap-pulse { animation-duration: 260ms !important; animation-iteration-count: 1 !important; }
   .score-star-burst i { animation-duration: 820ms !important; animation-iteration-count: 1 !important; }
   .score-star-burst strong { animation-duration: 760ms !important; animation-iteration-count: 1 !important; }
