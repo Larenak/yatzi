@@ -2,14 +2,13 @@ import {
   CATEGORY_IDS,
   UPPER_IDS,
   calculateScore,
-  chooseRivalCategory,
   getRequiredJokerCategory,
   getTotalScore,
   getUpperSubtotal,
   isJokerRoll,
   isYahtzee,
   simulateRivalTurn,
-} from "./game.js";
+} from "./game.js?v=1.5.2";
 
 const translations = {
   ru: {
@@ -19,6 +18,8 @@ const translations = {
     categories: "КОМБИНАЦИИ",
     howToPlay: "Как играть?",
     virtualNotice: "Соперник управляется игрой",
+    soundOn: "Выключить звук",
+    soundOff: "Включить звук",
     paused: "Пауза",
     rulesEyebrow: "ПРАВИЛА ДУЭЛИ",
     rulesTitle: "Три броска — один выбор",
@@ -46,11 +47,27 @@ const translations = {
     scoreHint: "Выберите свободную красную ячейку",
     thinkingHint: "{name} бросает кости…",
     rivalRoll: "{name}: бросок {roll} из 3",
+    rivalKeeps: "{name} оставляет кубики: {count}",
     rivalResult: "Выпало: {dice}",
     held: "СТОП",
     bonus: "БОНУС",
     playerScored: "{category}: +{score}",
     rivalScored: "{name}: {category} · +{score}",
+    categoryHints: {
+      ones: "Сумма всех единиц",
+      twos: "Сумма всех двоек",
+      threes: "Сумма всех троек",
+      fours: "Сумма всех четвёрок",
+      fives: "Сумма всех пятёрок",
+      sixes: "Сумма всех шестёрок",
+      threeKind: "Три одинаковых — сумма всех кубиков",
+      fourKind: "Четыре одинаковых — сумма всех кубиков",
+      fullHouse: "Три одинаковых и пара — 25 очков",
+      smallStraight: "Четыре числа подряд — 30 очков",
+      largeStraight: "Пять чисел подряд — 40 очков",
+      yahtzee: "Пять одинаковых — 50 очков",
+      chance: "Сумма всех пяти кубиков",
+    },
     yahtzeeBonus: "Ятзи! Дополнительный бонус +100",
     victory: "Победа!",
     defeat: "Почти!",
@@ -71,6 +88,8 @@ const translations = {
     categories: "CATEGORIES",
     howToPlay: "How to play?",
     virtualNotice: "The rival is controlled by the game",
+    soundOn: "Mute sound",
+    soundOff: "Turn sound on",
     paused: "Paused",
     rulesEyebrow: "DUEL RULES",
     rulesTitle: "Three rolls, one choice",
@@ -98,11 +117,27 @@ const translations = {
     scoreHint: "Choose an open red cell",
     thinkingHint: "{name} is rolling…",
     rivalRoll: "{name}: roll {roll} of 3",
+    rivalKeeps: "{name} holds dice: {count}",
     rivalResult: "Rolled: {dice}",
     held: "HOLD",
     bonus: "BONUS",
     playerScored: "{category}: +{score}",
     rivalScored: "{name}: {category} · +{score}",
+    categoryHints: {
+      ones: "Total of all ones",
+      twos: "Total of all twos",
+      threes: "Total of all threes",
+      fours: "Total of all fours",
+      fives: "Total of all fives",
+      sixes: "Total of all sixes",
+      threeKind: "Three alike — total of all dice",
+      fourKind: "Four alike — total of all dice",
+      fullHouse: "Three alike and a pair — 25 points",
+      smallStraight: "Four consecutive numbers — 30 points",
+      largeStraight: "Five consecutive numbers — 40 points",
+      yahtzee: "Five alike — 50 points",
+      chance: "Total of all five dice",
+    },
     yahtzeeBonus: "Yatzy! Extra +100 bonus",
     victory: "Victory!",
     defeat: "So close!",
@@ -171,8 +206,11 @@ const elements = {
   finishRivalName: document.querySelector("#finishRivalName"),
   finishMessage: document.querySelector("#finishMessage"),
   playAgainButton: document.querySelector("#playAgainButton"),
+  soundButton: document.querySelector("#soundButton"),
+  soundIcon: document.querySelector("#soundIcon"),
   pauseCover: document.querySelector("#pauseCover"),
   toast: document.querySelector("#toast"),
+  categoryTooltip: document.querySelector("#categoryTooltip"),
 };
 
 let lang = getInitialLanguage();
@@ -182,6 +220,280 @@ let rivalTurnToken = 0;
 let toastTimer = null;
 let ysdk = null;
 let gameplayStarted = false;
+let soundEnabled = getStoredSoundPreference();
+
+const audioEngine = {
+  context: null,
+  effectsGain: null,
+  musicGain: null,
+  musicTimer: null,
+  musicStep: 0,
+};
+
+const MUSIC_SEQUENCE = [261.63, 329.63, 392, 329.63, 293.66, 349.23, 440, 349.23, 261.63, 392, 523.25, 392];
+
+function getStoredSoundPreference() {
+  try {
+    return window.localStorage.getItem("yatzy-sound") !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function storeSoundPreference() {
+  try {
+    window.localStorage.setItem("yatzy-sound", soundEnabled ? "on" : "off");
+  } catch {
+    // The preference remains active for the current session when storage is unavailable.
+  }
+}
+
+function updateSoundButton() {
+  if (!elements.soundButton) return;
+  elements.soundButton.classList.toggle("muted", !soundEnabled);
+  elements.soundButton.setAttribute("aria-pressed", String(!soundEnabled));
+  elements.soundButton.setAttribute("aria-label", soundEnabled ? t.soundOn : t.soundOff);
+  elements.soundIcon.textContent = soundEnabled ? "♫" : "×";
+}
+
+function createAudioEngine() {
+  if (audioEngine.context) return audioEngine.context;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+
+  const context = new AudioContextClass();
+  const masterGain = context.createGain();
+  const effectsGain = context.createGain();
+  const musicGain = context.createGain();
+  masterGain.gain.value = .68;
+  effectsGain.gain.value = .46;
+  musicGain.gain.value = .11;
+  effectsGain.connect(masterGain);
+  musicGain.connect(masterGain);
+  masterGain.connect(context.destination);
+  audioEngine.context = context;
+  audioEngine.effectsGain = effectsGain;
+  audioEngine.musicGain = musicGain;
+  return context;
+}
+
+function scheduleTone(frequency, duration = .08, volume = .08, type = "sine", delay = 0, destination = audioEngine.effectsGain) {
+  const context = audioEngine.context;
+  if (!soundEnabled || !context || context.state !== "running" || !destination) return;
+  const start = context.currentTime + delay;
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  gain.gain.setValueAtTime(.0001, start);
+  gain.gain.exponentialRampToValueAtTime(Math.max(.0002, volume), start + .012);
+  gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+  oscillator.connect(gain);
+  gain.connect(destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + .025);
+}
+
+function scheduleNoise(delay = 0, duration = .08, volume = .055, frequency = 900) {
+  const context = audioEngine.context;
+  if (!soundEnabled || !context || context.state !== "running") return;
+  const frameCount = Math.max(1, Math.floor(context.sampleRate * duration));
+  const buffer = context.createBuffer(1, frameCount, context.sampleRate);
+  const channel = buffer.getChannelData(0);
+  for (let index = 0; index < frameCount; index += 1) channel[index] = Math.random() * 2 - 1;
+
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+  const start = context.currentTime + delay;
+  source.buffer = buffer;
+  filter.type = "bandpass";
+  filter.frequency.value = frequency;
+  filter.Q.value = .8;
+  gain.gain.setValueAtTime(volume, start);
+  gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioEngine.effectsGain);
+  source.start(start);
+}
+
+function playMusicStep() {
+  if (!soundEnabled || !audioEngine.context || audioEngine.context.state !== "running") return;
+  const note = MUSIC_SEQUENCE[audioEngine.musicStep % MUSIC_SEQUENCE.length];
+  scheduleTone(note, .52, .075, "triangle", 0, audioEngine.musicGain);
+  scheduleTone(note * 2, .22, .025, "sine", .08, audioEngine.musicGain);
+  if (audioEngine.musicStep % 4 === 0) scheduleTone(note / 2, .72, .055, "sine", 0, audioEngine.musicGain);
+  audioEngine.musicStep += 1;
+}
+
+function startBackgroundMusic() {
+  if (!soundEnabled || !audioEngine.context || audioEngine.context.state !== "running" || audioEngine.musicTimer) return;
+  playMusicStep();
+  audioEngine.musicTimer = window.setInterval(playMusicStep, 620);
+}
+
+function stopBackgroundMusic() {
+  if (!audioEngine.musicTimer) return;
+  window.clearInterval(audioEngine.musicTimer);
+  audioEngine.musicTimer = null;
+}
+
+async function ensureAudioReady() {
+  if (!soundEnabled) return null;
+  const context = createAudioEngine();
+  if (!context) return null;
+  try {
+    if (context.state === "suspended") await context.resume();
+    startBackgroundMusic();
+    return context;
+  } catch {
+    return null;
+  }
+}
+
+function playClickSound() {
+  void ensureAudioReady().then((context) => {
+    if (context) scheduleTone(610, .055, .075, "sine");
+  });
+}
+
+function playHoldSound(held) {
+  void ensureAudioReady().then((context) => {
+    if (!context) return;
+    scheduleTone(held ? 760 : 430, .11, .09, "triangle");
+    scheduleTone(held ? 980 : 560, .08, .045, "sine", .045);
+  });
+}
+
+function playDiceRollSound(duration, diceCount) {
+  void ensureAudioReady().then((context) => {
+    if (!context) return;
+    const timeScale = Math.max(.72, duration / 610);
+    const bursts = Math.max(4, diceCount + 1);
+    for (let index = 0; index < bursts; index += 1) {
+      scheduleNoise(index * .055 * timeScale, .065, .045 + index * .005, 720 + index * 120);
+    }
+    const impactDelay = duration * .54 / 1000;
+    scheduleTone(128, .13, .13, "triangle", impactDelay);
+    scheduleNoise(impactDelay, .11, .1, 420);
+    scheduleTone(180, .09, .07, "sine", impactDelay + .15);
+  });
+}
+
+function playScoreSound(side, score) {
+  void ensureAudioReady().then((context) => {
+    if (!context) return;
+    const base = side === "player" ? 392 : 294;
+    const direction = score > 0 ? 1 : .78;
+    [1, 1.25, 1.5].forEach((step, index) => scheduleTone(base * step * direction, .25, .09 - index * .015, "triangle", index * .105));
+  });
+}
+
+function playScoreImpactSound(side, score) {
+  void ensureAudioReady().then((context) => {
+    if (!context) return;
+    const strength = Math.min(1, .38 + Math.max(0, score) / 55);
+    const base = side === "player" ? 460 : 360;
+    scheduleNoise(0, .13, .085 * strength, side === "player" ? 1150 : 850);
+    scheduleTone(side === "player" ? 170 : 145, .16, .14 * strength, "triangle");
+    const sparkleCount = 3 + Math.ceil(Math.max(0, score) / 12);
+    for (let index = 0; index < sparkleCount; index += 1) {
+      scheduleTone(base + index * 95, .19, .065 * strength, "sine", .035 + index * .045);
+    }
+  });
+}
+
+function playFinishSound(won) {
+  void ensureAudioReady().then((context) => {
+    if (!context) return;
+    const notes = won ? [523.25, 659.25, 783.99, 1046.5] : [392, 349.23, 293.66];
+    notes.forEach((note, index) => scheduleTone(note, .42, .11, "triangle", index * .13));
+  });
+}
+
+function setSoundEnabled(enabled) {
+  soundEnabled = enabled;
+  storeSoundPreference();
+  updateSoundButton();
+  if (!enabled) {
+    stopBackgroundMusic();
+    void audioEngine.context?.suspend();
+    return;
+  }
+  void ensureAudioReady().then((context) => {
+    if (!context) return;
+    scheduleTone(523.25, .12, .1, "triangle");
+    scheduleTone(783.99, .18, .08, "triangle", .08);
+  });
+}
+
+function createClickBurst(event, button) {
+  const point = event.clientX || event.clientY
+    ? { x: event.clientX, y: event.clientY }
+    : (() => {
+        const rect = button.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      })();
+  const burst = document.createElement("span");
+  burst.className = "click-burst";
+  burst.style.left = `${point.x}px`;
+  burst.style.top = `${point.y}px`;
+  burst.append(...Array.from({ length: 6 }, () => document.createElement("i")));
+  document.body.append(burst);
+  window.setTimeout(() => burst.remove(), 560);
+}
+
+function showCategoryTooltip(icon) {
+  if (!elements.categoryTooltip || !icon?.dataset.categoryHint) return;
+  elements.categoryTooltip.textContent = icon.dataset.categoryHint;
+  elements.categoryTooltip.hidden = false;
+  const iconRect = icon.getBoundingClientRect();
+  const tooltipRect = elements.categoryTooltip.getBoundingClientRect();
+  const left = Math.min(
+    window.innerWidth - tooltipRect.width - 8,
+    Math.max(8, iconRect.left + iconRect.width / 2 - tooltipRect.width / 2),
+  );
+  let top = iconRect.top - tooltipRect.height - 10;
+  if (top < 8) top = iconRect.bottom + 10;
+  elements.categoryTooltip.style.left = `${left}px`;
+  elements.categoryTooltip.style.top = `${top}px`;
+}
+
+function hideCategoryTooltip() {
+  if (elements.categoryTooltip) elements.categoryTooltip.hidden = true;
+}
+
+function createScoreStarBurst(targetCell, score, side) {
+  const rect = targetCell.getBoundingClientRect();
+  const points = Math.max(0, Math.min(50, score));
+  const starCount = 6 + Math.round(points / 3);
+  const radius = 38 + points * 1.12;
+  const burst = document.createElement("span");
+  burst.className = `score-star-burst ${side}-burst`;
+  burst.style.left = `${rect.left + rect.width / 2}px`;
+  burst.style.top = `${rect.top + rect.height / 2}px`;
+
+  for (let index = 0; index < starCount; index += 1) {
+    const angle = (Math.PI * 2 * index) / starCount + (Math.random() - .5) * .38;
+    const distance = radius * (.58 + Math.random() * .52);
+    const star = document.createElement("i");
+    star.textContent = index % 3 === 0 ? "★" : "✦";
+    star.style.setProperty("--star-x", `${Math.cos(angle) * distance}px`);
+    star.style.setProperty("--star-y", `${Math.sin(angle) * distance}px`);
+    star.style.setProperty("--star-size", `${8 + Math.random() * 8 + points * .055}px`);
+    star.style.setProperty("--star-rotate", `${180 + Math.random() * 420}deg`);
+    star.style.setProperty("--star-delay", `${Math.random() * 80}ms`);
+    burst.append(star);
+  }
+
+  const value = document.createElement("strong");
+  value.textContent = `+${score}`;
+  burst.append(value);
+  document.body.append(burst);
+  playScoreImpactSound(side, score);
+  window.setTimeout(() => burst.remove(), 980);
+}
 
 let state = createInitialState();
 
@@ -259,6 +571,8 @@ async function performDiceThrow(finalDice, heldDice = [false, false, false, fals
   render();
   const diceElements = [...elements.diceStage.querySelectorAll(".die")];
   const animatedDice = diceElements.filter((_, index) => !heldDice[index]);
+  elements.app.classList.add("roll-energy");
+  playDiceRollSound(duration, animatedDice.length);
   animatedDice.forEach((die) => {
     const index = Number(die.dataset.index);
     die.classList.add("throwing");
@@ -267,14 +581,29 @@ async function performDiceThrow(finalDice, heldDice = [false, false, false, fals
     die.style.setProperty("--throw-duration", `${duration}ms`);
   });
 
+  const throwStartedAt = performance.now();
+  const settledDice = new Set();
   const faceTicker = window.setInterval(() => {
-    animatedDice.forEach((die) => paintDieElement(die, randomDie()));
+    const elapsed = performance.now() - throwStartedAt;
+    animatedDice.forEach((die) => {
+      const index = Number(die.dataset.index);
+      const revealAt = duration * .78 + index * 38;
+      if (elapsed >= revealAt) {
+        if (!settledDice.has(index)) {
+          paintDieElement(die, finalDice[index]);
+          settledDice.add(index);
+        }
+      } else {
+        paintDieElement(die, randomDie());
+      }
+    });
   }, 68);
 
   await wait(duration + 175);
   window.clearInterval(faceTicker);
   state.dice = [...finalDice];
   state.rolling = false;
+  elements.app.classList.remove("roll-energy");
   render();
 }
 
@@ -330,13 +659,18 @@ async function animateScoreTransfer(categoryId, side, categoryScore, totalBefore
   const totalElement = side === "player" ? elements.playerTotal : elements.rivalTotal;
   if (!targetCell) return;
 
+  const effectClass = side === "player" ? "player-score-effect" : "rival-score-effect";
+  elements.app.classList.add(effectClass);
+  playScoreSound(side, categoryScore);
   targetCell.textContent = "0";
   const numberAnimation = animateNumber(targetCell, 0, categoryScore, 500);
   const totalAnimation = animateNumber(totalElement, totalBefore, totalAfter, 500);
   await Promise.all([flyDiceToCell(targetCell), numberAnimation, totalAnimation]);
+  createScoreStarBurst(targetCell, categoryScore, side);
   targetCell.classList.add("score-pop");
   await wait(120);
   targetCell.classList.remove("score-pop");
+  elements.app.classList.remove(effectClass);
 }
 
 function applyTranslations() {
@@ -348,6 +682,7 @@ function applyTranslations() {
   });
   elements.rulesButton.setAttribute("aria-label", lang === "ru" ? "Открыть правила" : "Open rules");
   elements.newGameButton.setAttribute("aria-label", lang === "ru" ? "Начать заново" : "Restart match");
+  updateSoundButton();
 }
 
 function getRound() {
@@ -356,11 +691,6 @@ function getRound() {
 
 function getPlayerPotential(categoryId) {
   return calculateScore(categoryId, state.dice, { joker: isJokerRoll(state.dice, state.playerScores) });
-}
-
-function getRecommendedCategory() {
-  if (state.rollCount === 0) return null;
-  return chooseRivalCategory(state.dice, state.playerScores);
 }
 
 function createPips(value, className = "pip") {
@@ -380,7 +710,9 @@ function createCategoryIcon(categoryId) {
     icon.className = `category-icon${["smallStraight", "largeStraight", "yahtzee"].includes(categoryId) ? " word-icon" : ""}`;
     icon.textContent = LOWER_ICONS[categoryId];
   }
-  icon.setAttribute("aria-hidden", "true");
+  icon.dataset.categoryHint = t.categoryHints[categoryId];
+  icon.tabIndex = 0;
+  icon.setAttribute("aria-label", `${t.categoryNames[categoryId]}. ${t.categoryHints[categoryId]}`);
   return icon;
 }
 
@@ -395,7 +727,6 @@ function createCategoryRow(categoryId) {
   const locked = Boolean(required && required !== categoryId);
   const available = state.rollCount > 0 && !playerScored && !locked && !state.rivalThinking && !state.scoring;
   const potential = available ? getPlayerPotential(categoryId) : null;
-  const recommended = getRecommendedCategory() === categoryId && available;
 
   const playerCell = document.createElement("button");
   playerCell.type = "button";
@@ -404,7 +735,6 @@ function createCategoryRow(categoryId) {
   playerCell.disabled = !available || state.rolling || state.paused;
   if (playerScored) playerCell.classList.add("scored");
   else if (available) playerCell.classList.add("available");
-  if (recommended) playerCell.classList.add("recommended");
   playerCell.textContent = playerScored ? state.playerScores[categoryId] : available ? potential : "";
   playerCell.setAttribute("aria-label", `${t.categoryNames[categoryId]}: ${playerScored ? state.playerScores[categoryId] : available ? potential : "—"}`);
   if (locked) playerCell.title = t.categoryNames[required];
@@ -449,9 +779,9 @@ function createDie(index) {
   die.type = "button";
   die.className = "die";
   die.dataset.index = String(index);
-  die.dataset.heldLabel = t.held;
   if (state.rollCount > 0) die.classList.add("has-value");
   if (state.held[index]) die.classList.add("held");
+  if (state.rivalThinking && state.held[index]) die.classList.add("rival-held");
   if (state.rolling && !state.held[index]) die.classList.add("rolling");
   die.disabled = state.rollCount === 0 || state.rollCount >= 3 || state.rolling || state.scoring || state.rivalThinking || state.paused;
   die.setAttribute("aria-pressed", String(state.held[index]));
@@ -544,7 +874,11 @@ async function rollDice() {
 function toggleHold(index) {
   if (state.rollCount === 0 || state.rollCount >= 3 || state.rolling || state.scoring || state.rivalThinking || state.paused) return;
   state.held[index] = !state.held[index];
+  playHoldSound(state.held[index]);
   render();
+  const toggledDie = elements.diceStage.querySelector(`.die[data-index="${index}"]`);
+  toggledDie?.classList.add("die-tap-pulse");
+  window.setTimeout(() => toggledDie?.classList.remove("die-tap-pulse"), 280);
 }
 
 async function scorePlayerCategory(categoryId) {
@@ -575,6 +909,21 @@ async function scorePlayerCategory(categoryId) {
   await playRivalTurn(token);
 }
 
+async function showRivalHoldDecision(heldDice) {
+  state.held = [...heldDice];
+  render();
+  const heldIndexes = heldDice.map((held, index) => held ? index : -1).filter((index) => index >= 0);
+  elements.diceHint.textContent = format(t.rivalKeeps, { name: state.rivalNick, count: heldIndexes.length });
+  if (heldIndexes.length) playHoldSound(true);
+  heldIndexes.forEach((dieIndex, order) => {
+    const die = elements.diceStage.querySelector(`.die[data-index="${dieIndex}"]`);
+    if (!die) return;
+    die.style.animationDelay = `${order * 85}ms`;
+    die.classList.add("die-tap-pulse");
+  });
+  await wait(540 + heldIndexes.length * 65);
+}
+
 async function playRivalTurn(token) {
   if (token !== rivalTurnToken) return;
   if (state.paused) {
@@ -592,13 +941,18 @@ async function playRivalTurn(token) {
 
   for (let rollIndex = 0; rollIndex < 3; rollIndex += 1) {
     if (token !== rivalTurnToken) return;
+    const roll = result.rolls[rollIndex];
     state.rollCount = rollIndex + 1;
-    const previewDice = rollIndex === 2 ? result.dice : Array.from({ length: 5 }, randomDie);
-    await performDiceThrow(previewDice, [false, false, false, false, false], 500);
+    state.held = [...roll.held];
+    await performDiceThrow(roll.dice, roll.held, 500);
     elements.diceHint.textContent = rollIndex === 2
       ? format(t.rivalResult, { dice: result.dice.join(" · ") })
       : format(t.rivalRoll, { name: state.rivalNick, roll: rollIndex + 1 });
-    await wait(rollIndex === 2 ? 1050 : 420);
+    if (rollIndex === 2) await wait(1050);
+    else {
+      await wait(330);
+      await showRivalHoldDecision(roll.nextHeld);
+    }
   }
 
   const totalBefore = getTotalScore(state.rivalScores, state.rivalYahtzeeBonus);
@@ -651,6 +1005,7 @@ function finishMatch() {
   }
   clearTimeout(toastTimer);
   elements.toast.classList.remove("show");
+  playFinishSound(playerScore > rivalScore);
   stopGameplay();
   openModal(elements.finishModal);
 }
@@ -684,6 +1039,39 @@ function closeModal(modal) {
 }
 
 function attachEvents() {
+  document.addEventListener("pointerdown", (event) => {
+    const button = event.target.closest("button");
+    if (!button || button.disabled) return;
+    createClickBurst(event, button);
+    playClickSound();
+  }, { passive: true });
+
+  document.addEventListener("click", (event) => {
+    if (event.detail !== 0) return;
+    const button = event.target.closest("button");
+    if (!button || button.disabled) return;
+    createClickBurst(event, button);
+    playClickSound();
+  });
+
+  elements.app.addEventListener("pointerover", (event) => {
+    const icon = event.target.closest(".category-icon[data-category-hint]");
+    if (icon) showCategoryTooltip(icon);
+  });
+  elements.app.addEventListener("pointerout", (event) => {
+    const icon = event.target.closest(".category-icon[data-category-hint]");
+    if (icon && !icon.contains(event.relatedTarget)) hideCategoryTooltip();
+  });
+  elements.app.addEventListener("focusin", (event) => {
+    const icon = event.target.closest(".category-icon[data-category-hint]");
+    if (icon) showCategoryTooltip(icon);
+  });
+  elements.app.addEventListener("focusout", (event) => {
+    if (event.target.closest(".category-icon[data-category-hint]")) hideCategoryTooltip();
+  });
+  window.addEventListener("scroll", hideCategoryTooltip, { passive: true });
+  window.addEventListener("resize", hideCategoryTooltip, { passive: true });
+
   elements.rollButton.addEventListener("click", rollDice);
   elements.diceStage.addEventListener("click", (event) => {
     const die = event.target.closest(".die");
@@ -697,6 +1085,7 @@ function attachEvents() {
   elements.newGameButton.addEventListener("click", requestReset);
   elements.confirmResetButton.addEventListener("click", resetMatch);
   elements.playAgainButton.addEventListener("click", resetMatch);
+  elements.soundButton.addEventListener("click", () => setSoundEnabled(!soundEnabled));
   document.querySelectorAll("[data-close-rules]").forEach((button) => button.addEventListener("click", () => closeModal(elements.rulesModal)));
   document.querySelectorAll("[data-close-reset]").forEach((button) => button.addEventListener("click", () => closeModal(elements.resetModal)));
 
@@ -716,6 +1105,15 @@ function attachEvents() {
 
   document.addEventListener("contextmenu", (event) => {
     if (event.target.closest("#gameApp")) event.preventDefault();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopBackgroundMusic();
+      void audioEngine.context?.suspend();
+    } else if (soundEnabled && audioEngine.context) {
+      void ensureAudioReady();
+    }
   });
 }
 
@@ -751,8 +1149,17 @@ async function initPlatform() {
       t = translations[lang];
       render();
     }
-    ysdk.on?.("game_api_pause", () => { state.paused = true; render(); });
-    ysdk.on?.("game_api_resume", () => { state.paused = false; render(); });
+    ysdk.on?.("game_api_pause", () => {
+      state.paused = true;
+      stopBackgroundMusic();
+      void audioEngine.context?.suspend();
+      render();
+    });
+    ysdk.on?.("game_api_resume", () => {
+      state.paused = false;
+      if (soundEnabled && audioEngine.context) void ensureAudioReady();
+      render();
+    });
     ysdk.features?.LoadingAPI?.ready();
     startGameplay();
   } catch {

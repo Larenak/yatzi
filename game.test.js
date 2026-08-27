@@ -67,6 +67,14 @@ test("simulated rival turn returns five dice and a valid score", () => {
   let index = 0;
   const turn = simulateRivalTurn({}, () => sequence[index++ % sequence.length]);
   assert.equal(turn.dice.length, 5);
+  assert.equal(turn.rolls.length, 3);
+  assert.deepEqual(turn.rolls[2].dice, turn.dice);
+  assert.equal(turn.rolls.slice(0, 2).some((roll) => roll.nextHeld.some(Boolean)), true);
+  for (let rollIndex = 1; rollIndex < turn.rolls.length; rollIndex += 1) {
+    turn.rolls[rollIndex].held.forEach((held, dieIndex) => {
+      if (held) assert.equal(turn.rolls[rollIndex].dice[dieIndex], turn.rolls[rollIndex - 1].dice[dieIndex]);
+    });
+  }
   assert.ok(CATEGORY_IDS.includes(turn.categoryId));
   assert.equal(Number.isInteger(turn.score), true);
 });

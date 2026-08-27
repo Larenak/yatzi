@@ -139,10 +139,16 @@ function getRivalHolds(dice) {
 
 export function simulateRivalTurn(scores, random = Math.random) {
   let dice = Array.from({ length: 5 }, () => Math.floor(random() * 6) + 1);
+  let held = [false, false, false, false, false];
+  const rolls = [];
 
-  for (let reroll = 0; reroll < 2; reroll += 1) {
-    const held = getRivalHolds(dice);
-    dice = dice.map((value, index) => held[index] ? value : Math.floor(random() * 6) + 1);
+  for (let rollIndex = 0; rollIndex < 3; rollIndex += 1) {
+    if (rollIndex > 0) {
+      dice = dice.map((value, index) => held[index] ? value : Math.floor(random() * 6) + 1);
+    }
+    const nextHeld = rollIndex < 2 ? getRivalHolds(dice) : held;
+    rolls.push({ dice: [...dice], held: [...held], nextHeld: [...nextHeld] });
+    held = nextHeld;
   }
 
   const categoryId = chooseRivalCategory(dice, scores);
@@ -150,6 +156,7 @@ export function simulateRivalTurn(scores, random = Math.random) {
   return {
     categoryId,
     dice,
+    rolls,
     score: calculateScore(categoryId, dice, { joker }),
     yahtzeeBonus: isYahtzee(dice) && scores.yahtzee === 50 ? 100 : 0,
   };

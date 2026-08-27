@@ -6,11 +6,16 @@
     <meta name="theme-color" content="#f08c77" />
     <meta name="description" content="Ятзи — быстрая дуэль в кости с виртуальным соперником." />
     <title>Ятзи — быстрая дуэль</title>
-    <link rel="stylesheet" href="styles.css?v=1.2.1" />
+    <link rel="stylesheet" href="styles.css?v=1.5.2" />
   </head>
   <body>
+    <div class="ambient-particles" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </div>
     <div class="background-dice die-decoration-one" aria-hidden="true">⚄</div>
     <div class="background-dice die-decoration-two" aria-hidden="true">⚂</div>
+    <div class="background-dice die-decoration-three" aria-hidden="true">⚀</div>
+    <div class="background-dice die-decoration-four" aria-hidden="true">⚃</div>
 
     <main class="game-shell" id="gameApp">
       <header class="duel-header">
@@ -58,6 +63,7 @@
       <footer class="game-footer">
         <button id="footerRulesButton" type="button" data-i18n="howToPlay">Как играть?</button>
         <span data-i18n="virtualNotice">Соперник управляется игрой</span>
+        <button class="sound-toggle" id="soundButton" type="button" aria-label="Выключить звук"><span id="soundIcon" aria-hidden="true">♫</span></button>
       </footer>
 
       <div class="pause-cover" id="pauseCover" hidden><div><span>Ⅱ</span><strong data-i18n="paused">Пауза</strong></div></div>
@@ -111,6 +117,7 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="app.js?v=1.2.1"></script>
+    <div class="category-tooltip" id="categoryTooltip" role="tooltip" hidden></div>
+    <script type="module" src="app.js?v=1.5.2"></script>
   </body>
 </html>
