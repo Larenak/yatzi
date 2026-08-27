@@ -8,7 +8,7 @@ import {
   isJokerRoll,
   isYahtzee,
   simulateRivalTurn,
-} from "./game.js?v=1.5.8";
+} from "./game.js?v=1.6.4";
 
 const translations = {
   ru: {
@@ -24,14 +24,18 @@ const translations = {
     soundOn: "Выключить звук",
     soundOff: "Включить звук",
     paused: "Пауза",
-    rulesEyebrow: "ПРАВИЛА ДУЭЛИ",
-    rulesTitle: "Три броска — один выбор",
-    rule1: "Бросьте пять костей. За ход доступно до трёх бросков.",
-    rule2: "Нажмите на удачные кости, чтобы оставить их перед перебросом.",
-    rule3: "Запишите результат в одну свободную красную ячейку. Затем ход сделает виртуальный соперник.",
-    bonusTitle: "Бонус +35",
-    bonusText: "Наберите 63 очка в верхней секции.",
-    continueGame: "Продолжить игру",
+    rulesEyebrow: "КАК ИГРАТЬ",
+    rulesTitle: "Всего 3 простых шага",
+    tutorialIntro: "Сыграй против соперника и набери больше очков.",
+    step1Title: "Брось кубики",
+    rule1: "Нажми большую кнопку «БРОСИТЬ». За ход можно бросить до 3 раз.",
+    step2Title: "Оставь нужные",
+    rule2: "Нажми на хороший кубик — он останется. Остальные можно бросить ещё раз.",
+    step3Title: "Запиши очки",
+    rule3: "Нажми на свободную клетку в колонке «ВЫ». После этого ходит соперник.",
+    tutorialGoalTitle: "Как победить?",
+    tutorialGoal: "Заполни 13 клеток и набери больше очков, чем соперник.",
+    continueGame: "ПОНЯТНО — ИГРАТЬ!",
     newMatch: "НОВАЯ ДУЭЛЬ",
     resetTitle: "Начать заново?",
     resetText: "Текущий счёт будет сброшен, а соперник изменится.",
@@ -90,14 +94,18 @@ const translations = {
     soundOn: "Mute sound",
     soundOff: "Turn sound on",
     paused: "Paused",
-    rulesEyebrow: "DUEL RULES",
-    rulesTitle: "Three rolls, one choice",
-    rule1: "Roll five dice. You have up to three rolls per turn.",
-    rule2: "Tap useful dice to hold them before your next roll.",
-    rule3: "Score one open red cell. Then the virtual rival takes a turn.",
-    bonusTitle: "+35 bonus",
-    bonusText: "Score 63 points in the upper section.",
-    continueGame: "Continue",
+    rulesEyebrow: "HOW TO PLAY",
+    rulesTitle: "Only 3 easy steps",
+    tutorialIntro: "Play against a rival and score more points.",
+    step1Title: "Roll the dice",
+    rule1: "Press the big ROLL button. You can roll up to 3 times each turn.",
+    step2Title: "Keep useful dice",
+    rule2: "Tap a good die to keep it. Roll the other dice again.",
+    step3Title: "Score points",
+    rule3: "Tap an open cell in the YOU column. Then your rival takes a turn.",
+    tutorialGoalTitle: "How do I win?",
+    tutorialGoal: "Fill all 13 cells and score more points than your rival.",
+    continueGame: "GOT IT — PLAY!",
     newMatch: "NEW DUEL",
     resetTitle: "Start over?",
     resetText: "The current score will reset and your rival will change.",
@@ -167,7 +175,6 @@ const PIPS = {
 const LOWER_ICONS = {
   threeKind: "3×",
   fourKind: "4×",
-  fullHouse: "⌂",
   smallStraight: "SMALL",
   largeStraight: "LARGE",
   yahtzee: "YATZY",
@@ -716,6 +723,14 @@ function createCategoryIcon(categoryId) {
   if (UPPER_IDS.includes(categoryId)) {
     icon.className = "category-icon upper-icon";
     icon.append(...createPips(UPPER_IDS.indexOf(categoryId) + 1, "mini-pip"));
+  } else if (categoryId === "fullHouse") {
+    icon.className = "category-icon house-icon";
+    icon.innerHTML = `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path class="house-roof" d="M5 23.5 24 6.5l19 17-4.5 5L24 15.5 9.5 28.5z" />
+        <path class="house-body" d="M11.5 24.5 24 13.5l12.5 11v16H11.5z" />
+        <rect class="house-door" x="20" y="27" width="8" height="13.5" rx="1.8" />
+      </svg>`;
   } else {
     icon.className = `category-icon${["smallStraight", "largeStraight", "yahtzee"].includes(categoryId) ? " word-icon" : ""}`;
     icon.textContent = LOWER_ICONS[categoryId];
@@ -1030,7 +1045,7 @@ function requestReset() {
 function openModal(modal) {
   modal.hidden = false;
   document.body.style.overflow = "hidden";
-  window.setTimeout(() => modal.querySelector("button")?.focus(), 0);
+  window.setTimeout(() => (modal.querySelector("[data-autofocus]") || modal.querySelector("button"))?.focus(), 0);
 }
 
 function closeModal(modal) {
@@ -1179,4 +1194,5 @@ async function initPlatform() {
 
 attachEvents();
 render();
+openModal(elements.rulesModal);
 initPlatform();

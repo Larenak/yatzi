@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f08c77" />
     <meta name="description" content="Ятзи — быстрая дуэль в кости с виртуальным соперником." />
     <title>Ятзи — быстрая дуэль</title>
-    <link rel="stylesheet" href="styles.css?v=1.5.8" />
+    <link rel="stylesheet" href="styles.css?v=1.6.4" />
   </head>
   <body>
     <div class="ambient-particles" aria-hidden="true">
@@ -77,18 +77,40 @@
 
     <div class="modal" id="rulesModal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle" hidden>
       <div class="modal-backdrop" data-close-rules></div>
-      <section class="modal-card rules-card">
+      <section class="modal-card rules-card tutorial-card">
         <button class="modal-close" type="button" data-close-rules aria-label="Закрыть">×</button>
-        <span class="modal-die" aria-hidden="true">⚄</span>
-        <p class="modal-eyebrow" data-i18n="rulesEyebrow">ПРАВИЛА ДУЭЛИ</p>
-        <h1 id="rulesTitle" data-i18n="rulesTitle">Три броска — один выбор</h1>
-        <ol>
-          <li data-i18n="rule1">Бросьте пять костей. За ход доступно до трёх бросков.</li>
-          <li data-i18n="rule2">Нажмите на удачные кости, чтобы оставить их перед перебросом.</li>
-          <li data-i18n="rule3">Запишите результат в одну свободную красную ячейку. Затем ход сделает виртуальный соперник.</li>
-        </ol>
-        <div class="rules-bonus"><strong data-i18n="bonusTitle">Бонус +35</strong><span data-i18n="bonusText">Наберите 63 очка в верхней секции.</span></div>
-        <button class="modal-primary" type="button" data-close-rules data-i18n="continueGame">Продолжить игру</button>
+        <header class="tutorial-header">
+          <span class="modal-die" aria-hidden="true">⚄</span>
+          <div>
+            <p class="modal-eyebrow" data-i18n="rulesEyebrow">КАК ИГРАТЬ</p>
+            <h1 id="rulesTitle" data-i18n="rulesTitle">Всего 3 простых шага</h1>
+            <p class="tutorial-intro" data-i18n="tutorialIntro">Сыграй против соперника и набери больше очков.</p>
+          </div>
+        </header>
+
+        <div class="tutorial-steps">
+          <article class="tutorial-step">
+            <span class="tutorial-number">1</span>
+            <div class="tutorial-picture roll-picture" aria-hidden="true"><i>⚂</i><i>⚄</i><i>⚅</i></div>
+            <h2 data-i18n="step1Title">Брось кубики</h2>
+            <p data-i18n="rule1">Нажми большую кнопку «БРОСИТЬ». За ход можно бросить до 3 раз.</p>
+          </article>
+          <article class="tutorial-step">
+            <span class="tutorial-number">2</span>
+            <div class="tutorial-picture hold-picture" aria-hidden="true"><i>⚄</i><b>✓</b></div>
+            <h2 data-i18n="step2Title">Оставь нужные</h2>
+            <p data-i18n="rule2">Нажми на хороший кубик — он останется. Остальные можно бросить ещё раз.</p>
+          </article>
+          <article class="tutorial-step">
+            <span class="tutorial-number">3</span>
+            <div class="tutorial-picture score-picture" aria-hidden="true"><span>ВЫ</span><strong>+18</strong></div>
+            <h2 data-i18n="step3Title">Запиши очки</h2>
+            <p data-i18n="rule3">Нажми на свободную клетку в колонке «ВЫ». После этого ходит соперник.</p>
+          </article>
+        </div>
+
+        <div class="tutorial-goal"><span aria-hidden="true">★</span><div><strong data-i18n="tutorialGoalTitle">Как победить?</strong><p data-i18n="tutorialGoal">Заполни 13 клеток и набери больше очков, чем соперник.</p></div></div>
+        <button class="modal-primary tutorial-start" type="button" data-close-rules data-autofocus data-i18n="continueGame">ПОНЯТНО — ИГРАТЬ!</button>
       </section>
     </div>
 
@@ -124,6 +146,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="category-tooltip" id="categoryTooltip" role="tooltip" hidden></div>
-    <script type="module" src="app.js?v=1.5.8"></script>
+    <script type="module" src="app.js?v=1.6.4"></script>
   </body>
 </html>
