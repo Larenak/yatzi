@@ -8,7 +8,7 @@ import {
   isJokerRoll,
   isYahtzee,
   simulateRivalTurn,
-} from "./game.js?v=1.6.4";
+} from "./game.js?v=1.6.5";
 
 const translations = {
   ru: {
