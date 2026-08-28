@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f08c77" />
     <meta name="description" content="Ятзи — быстрая дуэль в кости с виртуальным соперником." />
     <title>Ятзи — быстрая дуэль</title>
-    <link rel="stylesheet" href="styles.css?v=1.6.7" />
+    <link rel="stylesheet" href="styles.css?v=1.7.0" />
   </head>
   <body>
     <div class="ambient-particles" aria-hidden="true">
@@ -37,7 +37,14 @@
           <div class="competitor rival-competitor"><span id="rivalName">Mila</span><strong id="rivalTotal">0</strong></div>
         </section>
 
-        <button class="circle-button restart-button" id="newGameButton" type="button" aria-label="Начать заново"><span aria-hidden="true">↻</span></button>
+        <div class="header-actions">
+          <div class="wallet-control" aria-label="Монеты">
+            <span class="coin-icon" aria-hidden="true">★</span>
+            <strong id="coinBalance">0</strong>
+            <button class="coin-add-button" id="openShopButton" type="button" aria-label="Пополнить монеты" aria-controls="shopModal">+</button>
+          </div>
+          <button class="circle-button restart-button" id="newGameButton" type="button" aria-label="Начать заново"><span aria-hidden="true">↻</span></button>
+        </div>
       </header>
 
       <section class="turn-strip" aria-live="polite">
@@ -110,7 +117,78 @@
         </div>
 
         <div class="tutorial-goal"><span aria-hidden="true">★</span><div><strong data-i18n="tutorialGoalTitle">Как победить?</strong><p data-i18n="tutorialGoal">Заполни 13 клеток и набери больше очков, чем соперник.</p></div></div>
-        <button class="modal-primary tutorial-start" type="button" data-close-rules data-autofocus data-i18n="continueGame">ПОНЯТНО — ИГРАТЬ!</button>
+        <div class="tutorial-actions">
+          <button class="modal-primary tutorial-start" id="rulesRewardButton" type="button" data-autofocus>
+            <span data-i18n="playWithReward">ИГРАТЬ — РЕКЛАМА</span>
+            <strong><span class="mini-coin" aria-hidden="true">★</span> +10</strong>
+          </button>
+          <button class="text-button" type="button" data-close-rules data-i18n="playWithoutReward">Играть без бонуса</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal" id="shopModal" role="dialog" aria-modal="true" aria-labelledby="shopTitle" hidden>
+      <div class="modal-backdrop" data-close-shop></div>
+      <section class="modal-card shop-card">
+        <button class="modal-close" type="button" data-close-shop aria-label="Закрыть">×</button>
+        <header class="shop-header">
+          <span class="shop-coin-icon" aria-hidden="true">★</span>
+          <div>
+            <p class="modal-eyebrow" data-i18n="shopEyebrow">КОШЕЛЁК</p>
+            <h1 id="shopTitle" data-i18n="shopTitle">Пополнить монеты</h1>
+            <p data-i18n="shopIntro">Смотрите рекламу или выберите набор.</p>
+          </div>
+        </header>
+
+        <button class="reward-ad-card" id="shopRewardButton" type="button">
+          <span class="reward-play" aria-hidden="true">▶</span>
+          <span><strong data-i18n="watchAd">Смотреть рекламу</strong><small data-i18n="watchAdHint">Получите награду после полного просмотра</small></span>
+          <b><span class="mini-coin" aria-hidden="true">★</span> +10</b>
+        </button>
+
+        <div class="shop-divider"><span data-i18n="orBuy">ИЛИ КУПИТЬ</span></div>
+        <div class="purchase-grid" id="purchaseGrid">
+          <button class="purchase-card" type="button" data-product-id="coins_50">
+            <span class="coin-stack coin-stack-small" aria-hidden="true"><i></i><i></i><i></i></span>
+            <strong>50 <span data-i18n="coinsShort">монет</span></strong>
+            <span class="purchase-price"><span data-price>49 YAN</span><img data-currency-image alt="" hidden /></span>
+          </button>
+          <button class="purchase-card popular" type="button" data-product-id="coins_200">
+            <em data-i18n="popular">ВЫГОДНО</em>
+            <span class="coin-stack" aria-hidden="true"><i></i><i></i><i></i></span>
+            <strong>200 <span data-i18n="coinsShort">монет</span></strong>
+            <span class="purchase-price"><span data-price>99 YAN</span><img data-currency-image alt="" hidden /></span>
+          </button>
+          <button class="purchase-card" type="button" data-product-id="coins_500">
+            <span class="coin-stack coin-stack-large" aria-hidden="true"><i></i><i></i><i></i></span>
+            <strong>500 <span data-i18n="coinsShort">монет</span></strong>
+            <span class="purchase-price"><span data-price>199 YAN</span><img data-currency-image alt="" hidden /></span>
+          </button>
+          <button class="purchase-card best-value" type="button" data-product-id="coins_1000">
+            <em data-i18n="bestValue">ЛУЧШАЯ ЦЕНА</em>
+            <span class="coin-stack coin-stack-xl" aria-hidden="true"><i></i><i></i><i></i></span>
+            <strong>1000 <span data-i18n="coinsShort">монет</span></strong>
+            <span class="purchase-price"><span data-price>349 YAN</span><img data-currency-image alt="" hidden /></span>
+          </button>
+        </div>
+        <p class="shop-note" id="shopNote" data-i18n="shopNote">Цены и валюта загружаются из Яндекс Игр.</p>
+      </section>
+    </div>
+
+    <div class="modal" id="turnRewardModal" role="dialog" aria-modal="true" aria-labelledby="turnRewardTitle" hidden>
+      <div class="modal-backdrop"></div>
+      <section class="modal-card compact-card reward-offer-card">
+        <span class="reward-gift" aria-hidden="true">★</span>
+        <p class="modal-eyebrow" data-i18n="turnRewardEyebrow">БОНУС ЗА 10 ХОДОВ</p>
+        <h1 id="turnRewardTitle" data-i18n="turnRewardTitle">Забрать 10 монет?</h1>
+        <p data-i18n="turnRewardText">Посмотрите рекламу и получите награду. Партия продолжится в любом случае.</p>
+        <div class="reward-offer-actions">
+          <button class="modal-primary reward-offer-button" id="turnRewardButton" type="button">
+            <span data-i18n="watchAd">Смотреть рекламу</span>
+            <strong><span class="mini-coin" aria-hidden="true">★</span> +10</strong>
+          </button>
+          <button class="text-button" id="skipTurnRewardButton" type="button" data-i18n="continueWithoutReward">Продолжить без бонуса</button>
+        </div>
       </section>
     </div>
 
@@ -146,6 +224,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="category-tooltip" id="categoryTooltip" role="tooltip" hidden></div>
-    <script type="module" src="app.js?v=1.6.7"></script>
+    <script type="module" src="app.js?v=1.7.0"></script>
   </body>
 </html>

@@ -8,7 +8,16 @@ import {
   isJokerRoll,
   isYahtzee,
   simulateRivalTurn,
-} from "./game.js?v=1.6.7";
+} from "./game.js?v=1.7.0";
+import {
+  AD_REWARD_COINS,
+  VICTORY_REWARD_COINS,
+  addWalletCoins,
+  completePlayerTurn,
+  getCoinProduct,
+  normalizeWallet,
+  recordProcessedPurchase,
+} from "./monetization.js?v=1.7.0";
 
 const translations = {
   ru: {
@@ -36,6 +45,29 @@ const translations = {
     tutorialGoalTitle: "Как победить?",
     tutorialGoal: "Заполни 13 клеток и набери больше очков, чем соперник.",
     continueGame: "ПОНЯТНО — ИГРАТЬ!",
+    playWithReward: "ИГРАТЬ — РЕКЛАМА",
+    playWithoutReward: "Играть без бонуса",
+    shopEyebrow: "КОШЕЛЁК",
+    shopTitle: "Пополнить монеты",
+    shopIntro: "Смотрите рекламу или выберите набор.",
+    watchAd: "Смотреть рекламу",
+    watchAdHint: "Получите награду после полного просмотра",
+    orBuy: "ИЛИ КУПИТЬ",
+    coinsShort: "монет",
+    popular: "ВЫГОДНО",
+    bestValue: "ЛУЧШАЯ ЦЕНА",
+    shopNote: "Цены и валюта загружаются из Яндекс Игр.",
+    turnRewardEyebrow: "БОНУС ЗА 10 ХОДОВ",
+    turnRewardTitle: "Забрать 10 монет?",
+    turnRewardText: "Посмотрите рекламу и получите награду. Партия продолжится в любом случае.",
+    continueWithoutReward: "Продолжить без бонуса",
+    coinsAdded: "+{coins} монет",
+    adUnavailable: "Реклама сейчас недоступна. Попробуйте позже.",
+    purchasesUnavailable: "Покупки доступны в Яндекс Играх.",
+    purchaseComplete: "Покупка готова: +{coins} монет",
+    purchasePending: "Платёж сохранён. Монеты начислятся при следующем запуске.",
+    purchaseCancelled: "Покупка не завершена.",
+    topUpCoins: "Пополнить монеты",
     newMatch: "НОВАЯ ДУЭЛЬ",
     resetTitle: "Начать заново?",
     resetText: "Текущий счёт будет сброшен, а соперник изменится.",
@@ -73,6 +105,7 @@ const translations = {
     defeat: "Почти!",
     draw: "Ничья!",
     victoryText: "Отличная партия — соперник повержен.",
+    victoryRewardText: "За победу начислено +25 монет.",
     defeatText: "Реванш? До победы не хватило {points}.",
     drawText: "Редкий случай: абсолютно равный счёт.",
     categoryNames: {
@@ -106,6 +139,29 @@ const translations = {
     tutorialGoalTitle: "How do I win?",
     tutorialGoal: "Fill all 13 cells and score more points than your rival.",
     continueGame: "GOT IT — PLAY!",
+    playWithReward: "PLAY — WATCH AD",
+    playWithoutReward: "Play without bonus",
+    shopEyebrow: "WALLET",
+    shopTitle: "Get more coins",
+    shopIntro: "Watch an ad or choose a coin pack.",
+    watchAd: "Watch an ad",
+    watchAdHint: "Get the reward after the full video",
+    orBuy: "OR BUY",
+    coinsShort: "coins",
+    popular: "POPULAR",
+    bestValue: "BEST VALUE",
+    shopNote: "Prices and currency are loaded from Yandex Games.",
+    turnRewardEyebrow: "10-TURN BONUS",
+    turnRewardTitle: "Collect 10 coins?",
+    turnRewardText: "Watch an ad to get the reward. The match continues either way.",
+    continueWithoutReward: "Continue without bonus",
+    coinsAdded: "+{coins} coins",
+    adUnavailable: "No ad is available right now. Try again later.",
+    purchasesUnavailable: "Purchases are available in Yandex Games.",
+    purchaseComplete: "Purchase complete: +{coins} coins",
+    purchasePending: "Payment saved. Coins will be credited on the next launch.",
+    purchaseCancelled: "The purchase was not completed.",
+    topUpCoins: "Get more coins",
     newMatch: "NEW DUEL",
     resetTitle: "Start over?",
     resetText: "The current score will reset and your rival will change.",
@@ -143,6 +199,7 @@ const translations = {
     defeat: "So close!",
     draw: "Draw!",
     victoryText: "Great game — you beat your rival.",
+    victoryRewardText: "+25 coins awarded for the win.",
     defeatText: "Rematch? You were {points} points short.",
     drawText: "A rare result: perfectly even scores.",
     categoryNames: {
@@ -181,6 +238,9 @@ const LOWER_ICONS = {
   chance: "?",
 };
 
+const WALLET_STORAGE_KEY = "yatzy-wallet-v1";
+const CLOUD_WALLET_KEY = "yatzyWallet";
+
 const elements = {
   app: document.querySelector("#gameApp"),
   playerTotal: document.querySelector("#playerTotal"),
@@ -198,9 +258,20 @@ const elements = {
   rollMarks: [...document.querySelectorAll("#rollMarks i")],
   settingsButton: document.querySelector("#settingsButton"),
   settingsPanel: document.querySelector("#settingsPanel"),
+  walletControl: document.querySelector(".wallet-control"),
+  coinBalance: document.querySelector("#coinBalance"),
+  openShopButton: document.querySelector("#openShopButton"),
   footerRulesButton: document.querySelector("#footerRulesButton"),
   newGameButton: document.querySelector("#newGameButton"),
   rulesModal: document.querySelector("#rulesModal"),
+  rulesRewardButton: document.querySelector("#rulesRewardButton"),
+  shopModal: document.querySelector("#shopModal"),
+  shopRewardButton: document.querySelector("#shopRewardButton"),
+  purchaseGrid: document.querySelector("#purchaseGrid"),
+  shopNote: document.querySelector("#shopNote"),
+  turnRewardModal: document.querySelector("#turnRewardModal"),
+  turnRewardButton: document.querySelector("#turnRewardButton"),
+  skipTurnRewardButton: document.querySelector("#skipTurnRewardButton"),
   resetModal: document.querySelector("#resetModal"),
   confirmResetButton: document.querySelector("#confirmResetButton"),
   finishModal: document.querySelector("#finishModal"),
@@ -223,8 +294,18 @@ let previousRival = "";
 let rivalTurnToken = 0;
 let toastTimer = null;
 let ysdk = null;
+let yandexPlayer = null;
+let payments = null;
+let platformReadyPromise = null;
 let gameplayStarted = false;
 let soundEnabled = getStoredSoundPreference();
+let wallet = getStoredWallet();
+let monetizationBusy = false;
+let turnRewardResolver = null;
+let walletOperation = Promise.resolve();
+let catalogLoaded = false;
+const catalog = new Map();
+const ALL_MODALS = [elements.rulesModal, elements.shopModal, elements.turnRewardModal, elements.resetModal, elements.finishModal];
 
 const audioEngine = {
   context: null,
@@ -250,6 +331,74 @@ function storeSoundPreference() {
   } catch {
     // The preference remains active for the current session when storage is unavailable.
   }
+}
+
+function getStoredWallet() {
+  try {
+    return normalizeWallet(JSON.parse(window.localStorage.getItem(WALLET_STORAGE_KEY)));
+  } catch {
+    return normalizeWallet(null);
+  }
+}
+
+function storeWallet() {
+  try {
+    window.localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(wallet));
+  } catch {
+    // The wallet remains available for the current session when storage is unavailable.
+  }
+}
+
+function setWallet(nextWallet, animate = false) {
+  const previousCoins = wallet.coins;
+  wallet = normalizeWallet(nextWallet);
+  storeWallet();
+  renderWallet();
+  if (animate && wallet.coins > previousCoins) {
+    elements.walletControl.classList.remove("coins-added");
+    void elements.walletControl.offsetWidth;
+    elements.walletControl.classList.add("coins-added");
+    window.setTimeout(() => elements.walletControl.classList.remove("coins-added"), 680);
+  }
+}
+
+function queueWalletMutation(mutator, { requireCloud = false, flush = true, animate = true } = {}) {
+  const task = walletOperation.catch(() => undefined).then(async () => {
+    const result = mutator(normalizeWallet(wallet));
+    const nextWallet = normalizeWallet(result?.wallet || result);
+
+    if (requireCloud) {
+      if (!yandexPlayer) throw new Error("PLAYER_UNAVAILABLE");
+      await yandexPlayer.setData({ [CLOUD_WALLET_KEY]: nextWallet }, flush);
+      setWallet(nextWallet, animate);
+    } else {
+      setWallet(nextWallet, animate);
+      if (yandexPlayer) {
+        try {
+          await yandexPlayer.setData({ [CLOUD_WALLET_KEY]: nextWallet }, flush);
+        } catch {
+          // Reward remains in the local safe storage if cloud sync is temporarily unavailable.
+        }
+      }
+    }
+
+    return result?.wallet ? { ...result, wallet: nextWallet } : nextWallet;
+  });
+  walletOperation = task.catch(() => undefined);
+  return task;
+}
+
+function addCoins(amount) {
+  return queueWalletMutation((currentWallet) => addWalletCoins(currentWallet, amount));
+}
+
+async function registerCompletedPlayerTurn() {
+  return queueWalletMutation((currentWallet) => completePlayerTurn(currentWallet), { animate: false });
+}
+
+function renderWallet() {
+  elements.coinBalance.textContent = String(wallet.coins);
+  elements.walletControl.setAttribute("aria-label", `${wallet.coins} ${t.coinsShort}`);
 }
 
 function updateSoundButton() {
@@ -525,6 +674,7 @@ function createInitialState() {
     rolling: false,
     scoring: false,
     paused: false,
+    victoryRewardGranted: false,
   };
 }
 
@@ -693,7 +843,9 @@ function applyTranslations() {
   });
   elements.settingsButton.setAttribute("aria-label", lang === "ru" ? "Открыть настройки" : "Open settings");
   elements.newGameButton.setAttribute("aria-label", lang === "ru" ? "Начать заново" : "Restart match");
+  elements.openShopButton.setAttribute("aria-label", t.topUpCoins);
   updateSoundButton();
+  renderWallet();
 }
 
 function setSettingsOpen(open) {
@@ -849,6 +1001,7 @@ function renderControls() {
 
   elements.rollButton.disabled = state.rollCount >= 3 || state.rolling || state.scoring || state.rivalThinking || state.paused;
   elements.newGameButton.disabled = state.rolling || state.scoring || state.rivalThinking || state.paused;
+  elements.openShopButton.disabled = state.paused || monetizationBusy;
   elements.rollMarks.forEach((mark, index) => {
     mark.classList.toggle("used", index < state.rollCount);
     mark.classList.toggle("current", index === state.rollCount && state.rollCount < 3 && !state.rivalThinking);
@@ -861,6 +1014,7 @@ function render() {
   renderScorecard();
   renderDice();
   renderControls();
+  renderWallet();
   elements.pauseCover.hidden = !state.paused;
 }
 
@@ -869,6 +1023,222 @@ function showToast(message) {
   elements.toast.textContent = message;
   elements.toast.classList.add("show");
   toastTimer = window.setTimeout(() => elements.toast.classList.remove("show"), 2100);
+}
+
+function setMonetizationBusy(busy) {
+  monetizationBusy = busy;
+  elements.rulesRewardButton.disabled = busy;
+  elements.shopRewardButton.disabled = busy;
+  elements.turnRewardButton.disabled = busy;
+  elements.purchaseGrid.querySelectorAll(".purchase-card").forEach((button) => {
+    button.disabled = busy;
+  });
+  renderControls();
+}
+
+function renderPurchaseCatalog() {
+  elements.purchaseGrid.querySelectorAll(".purchase-card").forEach((button) => {
+    const productConfig = getCoinProduct(button.dataset.productId);
+    const product = catalog.get(button.dataset.productId);
+    const price = button.querySelector("[data-price]");
+    const currencyImage = button.querySelector("[data-currency-image]");
+
+    if (catalogLoaded) button.hidden = !product;
+    else button.hidden = false;
+
+    price.textContent = product?.price || productConfig?.fallbackPrice || "—";
+    currencyImage.hidden = true;
+    currencyImage.removeAttribute("src");
+    if (product?.getPriceCurrencyImage) {
+      try {
+        const imageUrl = product.getPriceCurrencyImage("small");
+        if (imageUrl) {
+          currencyImage.src = imageUrl;
+          currencyImage.alt = product.priceCurrencyCode || "";
+          currencyImage.hidden = false;
+        }
+      } catch {
+        // Text price from the SDK remains visible if its currency icon is unavailable.
+      }
+    }
+    button.disabled = monetizationBusy;
+    if (product) button.setAttribute("aria-label", `${product.title}. ${product.price}`);
+  });
+
+  const hasVisibleProducts = [...elements.purchaseGrid.querySelectorAll(".purchase-card")].some((button) => !button.hidden);
+  elements.purchaseGrid.hidden = catalogLoaded && !hasVisibleProducts;
+  elements.shopNote.textContent = catalogLoaded && !hasVisibleProducts ? t.purchasesUnavailable : t.shopNote;
+}
+
+async function initializePlayerWallet() {
+  try {
+    yandexPlayer = await ysdk.getPlayer();
+    const data = await yandexPlayer.getData([CLOUD_WALLET_KEY]);
+    const cloudWallet = data?.[CLOUD_WALLET_KEY];
+    if (cloudWallet && typeof cloudWallet === "object") {
+      setWallet(cloudWallet);
+    } else {
+      await yandexPlayer.setData({ [CLOUD_WALLET_KEY]: wallet }, true);
+    }
+  } catch {
+    yandexPlayer = null;
+  }
+}
+
+async function processPurchase(purchase) {
+  const productConfig = getCoinProduct(purchase?.productID);
+  const purchaseToken = purchase?.purchaseToken;
+  if (!productConfig || !purchaseToken || !payments) return null;
+
+  if (!wallet.processedPurchaseTokens.includes(purchaseToken)) {
+    await queueWalletMutation((currentWallet) => {
+      const rewardedWallet = addWalletCoins(currentWallet, productConfig.coins);
+      return recordProcessedPurchase(rewardedWallet, purchaseToken);
+    }, { requireCloud: true, flush: true });
+  }
+
+  await payments.consumePurchase(purchaseToken);
+  return productConfig;
+}
+
+async function initializePayments() {
+  try {
+    payments = await ysdk.getPayments();
+    const products = await payments.getCatalog();
+    products.forEach((product) => catalog.set(product.id, product));
+    catalogLoaded = true;
+    renderPurchaseCatalog();
+  } catch {
+    payments = null;
+    catalogLoaded = true;
+    renderPurchaseCatalog();
+    return;
+  }
+
+  try {
+    const pendingPurchases = await payments.getPurchases();
+    for (const purchase of pendingPurchases) {
+      if (!getCoinProduct(purchase.productID)) continue;
+      try {
+        await processPurchase(purchase);
+      } catch {
+        // The unconsumed purchase stays pending and will be retried on the next launch.
+      }
+    }
+  } catch {
+    // Pending purchases will be checked again on the next launch.
+  }
+}
+
+async function initializeMonetization() {
+  await initializePlayerWallet();
+  await initializePayments();
+}
+
+async function purchaseCoins(productId) {
+  if (monetizationBusy) return;
+  await platformReadyPromise;
+  const product = catalog.get(productId);
+  if (!payments || !product) {
+    showToast(t.purchasesUnavailable);
+    return;
+  }
+
+  setMonetizationBusy(true);
+  let purchase = null;
+  try {
+    purchase = await payments.purchase({ id: productId });
+    const productConfig = await processPurchase(purchase);
+    if (productConfig) showToast(format(t.purchaseComplete, { coins: productConfig.coins }));
+  } catch {
+    showToast(purchase ? t.purchasePending : t.purchaseCancelled);
+  } finally {
+    setMonetizationBusy(false);
+  }
+}
+
+async function showRewardedAd() {
+  if (monetizationBusy) return false;
+  setMonetizationBusy(true);
+  stopGameplay();
+  state.paused = true;
+  render();
+  await platformReadyPromise;
+  if (!ysdk?.adv?.showRewardedVideo) {
+    state.paused = false;
+    render();
+    setMonetizationBusy(false);
+    if (ALL_MODALS.every((modal) => modal.hidden)) startGameplay();
+    showToast(t.adUnavailable);
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    let completed = false;
+    let rewarded = false;
+    let rewardTask = Promise.resolve();
+
+    const finish = async () => {
+      if (completed) return;
+      completed = true;
+      await rewardTask;
+      state.paused = false;
+      render();
+      setMonetizationBusy(false);
+      if (ALL_MODALS.every((modal) => modal.hidden)) startGameplay();
+      if (rewarded) showToast(format(t.coinsAdded, { coins: AD_REWARD_COINS }));
+      resolve(rewarded);
+    };
+
+    try {
+      ysdk.adv.showRewardedVideo({
+        callbacks: {
+          onOpen: () => {
+            stopBackgroundMusic();
+            void audioEngine.context?.suspend();
+          },
+          onRewarded: () => {
+            if (rewarded) return;
+            rewarded = true;
+            rewardTask = addCoins(AD_REWARD_COINS);
+          },
+          onClose: () => { void finish(); },
+          onError: () => { void finish(); },
+        },
+      });
+    } catch {
+      void finish();
+    }
+  });
+}
+
+async function startWithRulesReward() {
+  closeModal(elements.rulesModal);
+  await showRewardedAd();
+}
+
+function finishTurnRewardOffer() {
+  const resolve = turnRewardResolver;
+  turnRewardResolver = null;
+  closeModal(elements.turnRewardModal);
+  resolve?.();
+}
+
+async function acceptTurnReward() {
+  stopGameplay();
+  closeModal(elements.turnRewardModal);
+  await showRewardedAd();
+  const resolve = turnRewardResolver;
+  turnRewardResolver = null;
+  resolve?.();
+}
+
+function offerTurnReward() {
+  if (turnRewardResolver) return Promise.resolve();
+  return new Promise((resolve) => {
+    turnRewardResolver = resolve;
+    openModal(elements.turnRewardModal);
+  });
 }
 
 function startGameplay() {
@@ -924,6 +1294,9 @@ async function scorePlayerCategory(categoryId) {
   elements.app.classList.remove("is-scoring");
   render();
   showToast(bonusEarned ? t.yahtzeeBonus : format(t.playerScored, { category: t.categoryNames[categoryId], score }));
+
+  const turnProgress = await registerCompletedPlayerTurn();
+  if (turnProgress.rewardDue) await offerTurnReward();
 
   const token = ++rivalTurnToken;
   await wait(260);
@@ -1012,7 +1385,11 @@ function finishMatch() {
   elements.finishRivalName.textContent = state.rivalNick;
   if (playerScore > rivalScore) {
     elements.finishTitle.textContent = t.victory;
-    elements.finishMessage.textContent = t.victoryText;
+    if (!state.victoryRewardGranted) {
+      state.victoryRewardGranted = true;
+      void addCoins(VICTORY_REWARD_COINS);
+    }
+    elements.finishMessage.textContent = `${t.victoryText} ${t.victoryRewardText}`;
   } else if (playerScore < rivalScore) {
     elements.finishTitle.textContent = t.defeat;
     elements.finishMessage.textContent = format(t.defeatText, { points: difference });
@@ -1043,6 +1420,7 @@ function requestReset() {
 }
 
 function openModal(modal) {
+  stopGameplay();
   modal.hidden = false;
   document.body.style.overflow = "hidden";
   window.setTimeout(() => (modal.querySelector("[data-autofocus]") || modal.querySelector("button"))?.focus(), 0);
@@ -1050,7 +1428,10 @@ function openModal(modal) {
 
 function closeModal(modal) {
   modal.hidden = true;
-  if ([elements.rulesModal, elements.resetModal, elements.finishModal].every((item) => item.hidden)) document.body.style.overflow = "";
+  if (ALL_MODALS.every((item) => item.hidden)) {
+    document.body.style.overflow = "";
+    if (!state.paused) startGameplay();
+  }
 }
 
 function attachEvents() {
@@ -1102,7 +1483,19 @@ function attachEvents() {
     if (scoreCell) scorePlayerCategory(scoreCell.dataset.category);
   });
   elements.settingsButton.addEventListener("click", () => setSettingsOpen(elements.settingsPanel.hidden));
+  elements.openShopButton.addEventListener("click", () => {
+    renderPurchaseCatalog();
+    openModal(elements.shopModal);
+  });
   elements.footerRulesButton.addEventListener("click", () => openModal(elements.rulesModal));
+  elements.rulesRewardButton.addEventListener("click", () => { void startWithRulesReward(); });
+  elements.shopRewardButton.addEventListener("click", () => { void showRewardedAd(); });
+  elements.purchaseGrid.addEventListener("click", (event) => {
+    const purchaseButton = event.target.closest(".purchase-card[data-product-id]");
+    if (purchaseButton) void purchaseCoins(purchaseButton.dataset.productId);
+  });
+  elements.turnRewardButton.addEventListener("click", () => { void acceptTurnReward(); });
+  elements.skipTurnRewardButton.addEventListener("click", finishTurnRewardOffer);
   elements.newGameButton.addEventListener("click", requestReset);
   elements.confirmResetButton.addEventListener("click", resetMatch);
   elements.playAgainButton.addEventListener("click", resetMatch);
@@ -1111,16 +1504,19 @@ function attachEvents() {
     if (!event.target.closest(".settings-control")) setSettingsOpen(false);
   }, { passive: true });
   document.querySelectorAll("[data-close-rules]").forEach((button) => button.addEventListener("click", () => closeModal(elements.rulesModal)));
+  document.querySelectorAll("[data-close-shop]").forEach((button) => button.addEventListener("click", () => closeModal(elements.shopModal)));
   document.querySelectorAll("[data-close-reset]").forEach((button) => button.addEventListener("click", () => closeModal(elements.resetModal)));
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       if (!elements.settingsPanel.hidden) setSettingsOpen(false);
+      else if (!elements.turnRewardModal.hidden) finishTurnRewardOffer();
+      else if (!elements.shopModal.hidden) closeModal(elements.shopModal);
       else if (!elements.rulesModal.hidden) closeModal(elements.rulesModal);
       else if (!elements.resetModal.hidden) closeModal(elements.resetModal);
       return;
     }
-    if ([elements.rulesModal, elements.resetModal, elements.finishModal].some((modal) => !modal.hidden) || state.paused) return;
+    if (ALL_MODALS.some((modal) => !modal.hidden) || state.paused) return;
     if (event.code === "Space") {
       event.preventDefault();
       rollDice();
@@ -1186,7 +1582,9 @@ async function initPlatform() {
       render();
     });
     ysdk.features?.LoadingAPI?.ready();
-    startGameplay();
+    if (gameplayStarted) ysdk.features?.GameplayAPI?.start();
+    else if (ALL_MODALS.every((modal) => modal.hidden)) startGameplay();
+    await initializeMonetization();
   } catch {
     // The local game remains playable when the platform SDK is unavailable.
   }
@@ -1194,5 +1592,6 @@ async function initPlatform() {
 
 attachEvents();
 render();
+renderPurchaseCatalog();
 openModal(elements.rulesModal);
-initPlatform();
+platformReadyPromise = initPlatform();
