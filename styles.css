@@ -284,8 +284,7 @@ button {
 
 .coin-icon,
 .mini-coin,
-.shop-coin-icon,
-.reward-gift {
+.shop-coin-icon {
   display: inline-grid;
   flex: 0 0 auto;
   border: 2px solid #9a6420;
@@ -1164,6 +1163,48 @@ button.score-cell:disabled:not(.scored) {
   transform: translateY(-3px);
 }
 
+.roll-button.paid-roll-ready {
+  background: linear-gradient(180deg, #75516d, #593b55);
+  box-shadow: 0 8px 0 #432c40, 0 14px 24px rgba(73,43,68,.25), inset 0 2px 0 rgba(255,255,255,.13);
+}
+
+.roll-button.paid-roll-ready.needs-coins {
+  background: linear-gradient(180deg, #766974, #574e56);
+}
+
+.extra-roll-price {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 86px;
+  min-height: 43px;
+  padding: 5px 9px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: var(--cream);
+  box-shadow: 0 4px 0 rgba(39,46,53,.62);
+  color: var(--ink-dark);
+}
+
+.extra-roll-price strong {
+  font-size: 18px;
+  font-weight: 1000;
+}
+
+.extra-roll-price small {
+  padding-left: 5px;
+  border-left: 1px solid rgba(39,46,53,.25);
+  color: #76616f;
+  font-size: 9px;
+  font-weight: 1000;
+}
+
+.roll-button.needs-coins .extra-roll-price {
+  filter: grayscale(.35);
+  opacity: .82;
+}
+
 .game-footer {
   display: flex;
   align-items: center;
@@ -1409,7 +1450,7 @@ button.score-cell:disabled:not(.scored) {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding-right: 38px;
+  padding-right: 0;
 }
 
 .tutorial-header .modal-die {
@@ -1600,36 +1641,6 @@ button.score-cell:disabled:not(.scored) {
   transform: translateY(1px);
 }
 
-.tutorial-actions,
-.reward-offer-actions {
-  display: grid;
-  gap: 8px;
-}
-
-.tutorial-start,
-.reward-offer-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.tutorial-start > span,
-.reward-offer-button > span {
-  min-width: 0;
-}
-
-.tutorial-start > strong,
-.reward-offer-button > strong {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.18);
-  white-space: nowrap;
-}
-
 .mini-coin {
   width: 20px;
   height: 20px;
@@ -1637,23 +1648,6 @@ button.score-cell:disabled:not(.scored) {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.45), 0 1px 0 #b56d20;
   font-size: 8px;
 }
-
-.text-button {
-  min-height: 32px;
-  padding: 4px 12px;
-  border: 0;
-  background: transparent;
-  color: #675f59;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 900;
-  text-decoration: underline;
-  text-decoration-color: rgba(103,95,89,.38);
-  text-underline-offset: 3px;
-}
-
-.text-button:hover { color: var(--coral-dark); }
-.text-button:focus-visible { outline: 3px solid rgba(255,213,116,.96); outline-offset: 1px; }
 
 .shop-card {
   width: min(560px, 100%);
@@ -1667,17 +1661,9 @@ button.score-cell:disabled:not(.scored) {
   padding-right: 40px;
 }
 
-.shop-header > div { min-width: 0; }
+.shop-header h1 { min-width: 0; }
 
-.shop-header p:last-child {
-  margin: 6px 0 0;
-  color: #665e59;
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.shop-coin-icon,
-.reward-gift {
+.shop-coin-icon {
   width: 60px;
   height: 60px;
   border-width: 4px;
@@ -1722,9 +1708,7 @@ button.score-cell:disabled:not(.scored) {
   place-items: center;
 }
 
-.reward-ad-card > span:nth-child(2) { min-width: 0; }
-.reward-ad-card strong { display: block; font-size: 14px; }
-.reward-ad-card small { display: block; margin-top: 3px; color: #65716e; font-size: 9px; font-weight: 750; line-height: 1.25; }
+.reward-ad-card > strong { min-width: 0; font-size: 14px; }
 .reward-ad-card > b { display: flex; align-items: center; gap: 5px; color: var(--coral-dark); font-size: 17px; white-space: nowrap; }
 
 .shop-divider {
@@ -1808,7 +1792,7 @@ button.score-cell:disabled:not(.scored) {
   font-weight: 1000;
 }
 
-.purchase-price img { width: 16px; height: 16px; object-fit: contain; }
+.purchase-price img { width: 20px; height: 20px; object-fit: contain; }
 
 .coin-stack {
   position: relative;
@@ -1854,11 +1838,6 @@ button.score-cell:disabled:not(.scored) {
   line-height: 1.35;
   text-align: center;
 }
-
-.reward-offer-card { width: min(410px, 100%); }
-.reward-gift { margin: 0 auto 17px; }
-.reward-offer-card > p:not(.modal-eyebrow) { margin-bottom: 18px; }
-.reward-offer-button { min-height: 56px; }
 
 .modal-primary,
 .modal-secondary {
@@ -1922,6 +1901,86 @@ button.score-cell:disabled:not(.scored) {
   border-radius: 50%;
   background: #ffd574;
   color: var(--ink);
+}
+
+.finish-card.is-victory .modal-eyebrow {
+  display: none;
+}
+
+.victory-reward {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: min(220px, 100%);
+  min-height: 82px;
+  margin: 17px auto 4px;
+  padding: 10px 21px 10px 14px;
+  overflow: hidden;
+  border: 4px solid var(--ink);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff8c9 0%, #ffd86a 100%);
+  box-shadow: 0 7px 0 #b97924, 0 13px 25px rgba(130,77,28,.2), inset 0 2px 0 rgba(255,255,255,.7);
+  transform: rotate(-1deg);
+}
+
+.victory-reward::before,
+.victory-reward::after {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  color: rgba(255,255,255,.9);
+  content: "✦";
+  font-size: 18px;
+}
+
+.victory-reward::before { top: 6px; right: 13px; }
+.victory-reward::after { bottom: 12px; left: 10px; transform: scale(.7); }
+
+.victory-reward > strong {
+  position: relative;
+  z-index: 1;
+  color: #7c4618;
+  font-size: 43px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: -.04em;
+  text-shadow: 0 2px 0 rgba(255,255,255,.7);
+}
+
+.victory-coin-stack {
+  position: relative;
+  display: block;
+  flex: 0 0 73px;
+  width: 73px;
+  height: 58px;
+}
+
+.victory-coin-stack i {
+  position: absolute;
+  display: grid;
+  width: 45px;
+  height: 45px;
+  border: 3px solid #935a1b;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fff5a5 8%, #ffc33d 55%, #e59520 100%);
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.42), 0 4px 0 #b56d20;
+  color: #9a6420;
+  place-items: center;
+}
+
+.victory-coin-stack i::after {
+  content: "★";
+  font-size: 17px;
+}
+
+.victory-coin-stack i:nth-child(1) { top: 8px; left: 0; transform: rotate(-13deg); }
+.victory-coin-stack i:nth-child(2) { top: 11px; right: 0; transform: rotate(12deg); }
+.victory-coin-stack i:nth-child(3) { top: 0; left: 15px; z-index: 1; transform: scale(1.06); }
+
+.finish-card.is-victory .final-versus {
+  margin-top: 17px;
 }
 
 .final-versus {
@@ -2248,7 +2307,7 @@ button:focus-visible {
 
   .tutorial-header {
     gap: 11px;
-    padding-right: 27px;
+    padding-right: 0;
   }
 
   .tutorial-header .modal-die {

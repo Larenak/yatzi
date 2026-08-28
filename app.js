@@ -8,16 +8,21 @@ import {
   isJokerRoll,
   isYahtzee,
   simulateRivalTurn,
-} from "./game.js?v=1.7.0";
+} from "./game.js?v=1.8.2";
 import {
   AD_REWARD_COINS,
+  EXTRA_ROLL_COST,
+  MAX_PAID_ROLLS,
   VICTORY_REWARD_COINS,
   addWalletCoins,
   completePlayerTurn,
   getCoinProduct,
   normalizeWallet,
   recordProcessedPurchase,
-} from "./monetization.js?v=1.7.0";
+  spendWalletCoins,
+} from "./monetization.js?v=1.8.2";
+
+const PORTAL_CURRENCY_ICON_FALLBACK = "https://yastatic.net/s3/games-static/static-data/images/payments/sdk/currency-icon-s@2x.png";
 
 const translations = {
   ru: {
@@ -45,22 +50,13 @@ const translations = {
     tutorialGoalTitle: "Как победить?",
     tutorialGoal: "Заполни 13 клеток и набери больше очков, чем соперник.",
     continueGame: "ПОНЯТНО — ИГРАТЬ!",
-    playWithReward: "ИГРАТЬ — РЕКЛАМА",
-    playWithoutReward: "Играть без бонуса",
-    shopEyebrow: "КОШЕЛЁК",
     shopTitle: "Пополнить монеты",
-    shopIntro: "Смотрите рекламу или выберите набор.",
     watchAd: "Смотреть рекламу",
-    watchAdHint: "Получите награду после полного просмотра",
     orBuy: "ИЛИ КУПИТЬ",
     coinsShort: "монет",
     popular: "ВЫГОДНО",
     bestValue: "ЛУЧШАЯ ЦЕНА",
     shopNote: "Цены и валюта загружаются из Яндекс Игр.",
-    turnRewardEyebrow: "БОНУС ЗА 10 ХОДОВ",
-    turnRewardTitle: "Забрать 10 монет?",
-    turnRewardText: "Посмотрите рекламу и получите награду. Партия продолжится в любом случае.",
-    continueWithoutReward: "Продолжить без бонуса",
     coinsAdded: "+{coins} монет",
     adUnavailable: "Реклама сейчас недоступна. Попробуйте позже.",
     purchasesUnavailable: "Покупки доступны в Яндекс Играх.",
@@ -80,6 +76,10 @@ const translations = {
     rivalTurn: "ХОД {name}",
     roll: "БРОСИТЬ",
     reroll: "ЕЩЁ РАЗ",
+    extraRoll: "ЕЩЁ БРОСОК",
+    extraRollProgress: "Платный бросок {current} из {total}",
+    extraRollBought: "Дополнительный бросок: −{coins} монет",
+    needCoinsForRoll: "Для броска нужно 50 монет",
     chooseScore: "ВЫБЕРИТЕ СЧЁТ",
     held: "СТОП",
     bonus: "БОНУС",
@@ -104,8 +104,7 @@ const translations = {
     victory: "Победа!",
     defeat: "Почти!",
     draw: "Ничья!",
-    victoryText: "Отличная партия — соперник повержен.",
-    victoryRewardText: "За победу начислено +25 монет.",
+    victoryRewardLabel: "+{coins} монет",
     defeatText: "Реванш? До победы не хватило {points}.",
     drawText: "Редкий случай: абсолютно равный счёт.",
     categoryNames: {
@@ -139,22 +138,13 @@ const translations = {
     tutorialGoalTitle: "How do I win?",
     tutorialGoal: "Fill all 13 cells and score more points than your rival.",
     continueGame: "GOT IT — PLAY!",
-    playWithReward: "PLAY — WATCH AD",
-    playWithoutReward: "Play without bonus",
-    shopEyebrow: "WALLET",
     shopTitle: "Get more coins",
-    shopIntro: "Watch an ad or choose a coin pack.",
     watchAd: "Watch an ad",
-    watchAdHint: "Get the reward after the full video",
     orBuy: "OR BUY",
     coinsShort: "coins",
     popular: "POPULAR",
     bestValue: "BEST VALUE",
     shopNote: "Prices and currency are loaded from Yandex Games.",
-    turnRewardEyebrow: "10-TURN BONUS",
-    turnRewardTitle: "Collect 10 coins?",
-    turnRewardText: "Watch an ad to get the reward. The match continues either way.",
-    continueWithoutReward: "Continue without bonus",
     coinsAdded: "+{coins} coins",
     adUnavailable: "No ad is available right now. Try again later.",
     purchasesUnavailable: "Purchases are available in Yandex Games.",
@@ -174,6 +164,10 @@ const translations = {
     rivalTurn: "{name}'S TURN",
     roll: "ROLL",
     reroll: "ROLL AGAIN",
+    extraRoll: "EXTRA ROLL",
+    extraRollProgress: "Paid roll {current} of {total}",
+    extraRollBought: "Extra roll: −{coins} coins",
+    needCoinsForRoll: "You need 50 coins for this roll",
     chooseScore: "CHOOSE SCORE",
     held: "HOLD",
     bonus: "BONUS",
@@ -198,8 +192,7 @@ const translations = {
     victory: "Victory!",
     defeat: "So close!",
     draw: "Draw!",
-    victoryText: "Great game — you beat your rival.",
-    victoryRewardText: "+25 coins awarded for the win.",
+    victoryRewardLabel: "+{coins} coins",
     defeatText: "Rematch? You were {points} points short.",
     drawText: "A rare result: perfectly even scores.",
     categoryNames: {
@@ -255,7 +248,10 @@ const elements = {
   diceStage: document.querySelector("#diceStage"),
   rollButton: document.querySelector("#rollButton"),
   rollLabel: document.querySelector("#rollLabel"),
+  rollMarksPanel: document.querySelector("#rollMarks"),
   rollMarks: [...document.querySelectorAll("#rollMarks i")],
+  extraRollPrice: document.querySelector("#extraRollPrice"),
+  extraRollProgress: document.querySelector("#extraRollProgress"),
   settingsButton: document.querySelector("#settingsButton"),
   settingsPanel: document.querySelector("#settingsPanel"),
   walletControl: document.querySelector(".wallet-control"),
@@ -269,17 +265,17 @@ const elements = {
   shopRewardButton: document.querySelector("#shopRewardButton"),
   purchaseGrid: document.querySelector("#purchaseGrid"),
   shopNote: document.querySelector("#shopNote"),
-  turnRewardModal: document.querySelector("#turnRewardModal"),
-  turnRewardButton: document.querySelector("#turnRewardButton"),
-  skipTurnRewardButton: document.querySelector("#skipTurnRewardButton"),
   resetModal: document.querySelector("#resetModal"),
   confirmResetButton: document.querySelector("#confirmResetButton"),
   finishModal: document.querySelector("#finishModal"),
+  finishCard: document.querySelector("#finishCard"),
   finishTitle: document.querySelector("#finishTitle"),
   finishPlayerScore: document.querySelector("#finishPlayerScore"),
   finishRivalScore: document.querySelector("#finishRivalScore"),
   finishRivalName: document.querySelector("#finishRivalName"),
   finishMessage: document.querySelector("#finishMessage"),
+  victoryReward: document.querySelector("#victoryReward"),
+  victoryRewardAmount: document.querySelector("#victoryRewardAmount"),
   playAgainButton: document.querySelector("#playAgainButton"),
   soundButton: document.querySelector("#soundButton"),
   soundIcon: document.querySelector("#soundIcon"),
@@ -301,11 +297,10 @@ let gameplayStarted = false;
 let soundEnabled = getStoredSoundPreference();
 let wallet = getStoredWallet();
 let monetizationBusy = false;
-let turnRewardResolver = null;
 let walletOperation = Promise.resolve();
 let catalogLoaded = false;
 const catalog = new Map();
-const ALL_MODALS = [elements.rulesModal, elements.shopModal, elements.turnRewardModal, elements.resetModal, elements.finishModal];
+const ALL_MODALS = [elements.rulesModal, elements.shopModal, elements.resetModal, elements.finishModal];
 
 const audioEngine = {
   context: null,
@@ -390,6 +385,11 @@ function queueWalletMutation(mutator, { requireCloud = false, flush = true, anim
 
 function addCoins(amount) {
   return queueWalletMutation((currentWallet) => addWalletCoins(currentWallet, amount));
+}
+
+async function spendCoins(amount) {
+  const result = await queueWalletMutation((currentWallet) => spendWalletCoins(currentWallet, amount), { animate: false });
+  return result.spent;
 }
 
 async function registerCompletedPlayerTurn() {
@@ -664,6 +664,7 @@ function createInitialState() {
     dice: [1, 2, 3, 4, 5],
     held: [false, false, false, false, false],
     rollCount: 0,
+    paidRollCount: 0,
     playerScores: {},
     rivalScores: {},
     playerYahtzeeBonus: 0,
@@ -844,6 +845,8 @@ function applyTranslations() {
   elements.settingsButton.setAttribute("aria-label", lang === "ru" ? "Открыть настройки" : "Open settings");
   elements.newGameButton.setAttribute("aria-label", lang === "ru" ? "Начать заново" : "Restart match");
   elements.openShopButton.setAttribute("aria-label", t.topUpCoins);
+  elements.victoryReward.setAttribute("aria-label", format(t.victoryRewardLabel, { coins: VICTORY_REWARD_COINS }));
+  elements.victoryRewardAmount.textContent = `+${VICTORY_REWARD_COINS}`;
   updateSoundButton();
   renderWallet();
 }
@@ -860,6 +863,14 @@ function getRound() {
 
 function getPlayerPotential(categoryId) {
   return calculateScore(categoryId, state.dice, { joker: isJokerRoll(state.dice, state.playerScores) });
+}
+
+function isExtraRollAvailable() {
+  return state.rollCount >= 3 && state.paidRollCount < MAX_PAID_ROLLS && !state.rivalThinking;
+}
+
+function canAdjustHeldDice() {
+  return state.rollCount > 0 && (state.rollCount < 3 || isExtraRollAvailable());
 }
 
 function createPips(value, className = "pip") {
@@ -960,7 +971,7 @@ function createDie(index) {
   if (state.held[index]) die.classList.add("held");
   if (state.rivalThinking && state.held[index]) die.classList.add("rival-held");
   if (state.rolling && !state.held[index]) die.classList.add("rolling");
-  die.disabled = state.rollCount === 0 || state.rollCount >= 3 || state.rolling || state.scoring || state.rivalThinking || state.paused;
+  die.disabled = !canAdjustHeldDice() || state.rolling || state.scoring || state.rivalThinking || state.paused;
   die.setAttribute("aria-pressed", String(state.held[index]));
   die.setAttribute("aria-label", `${lang === "ru" ? "Кость" : "Die"} ${index + 1}: ${state.rollCount > 0 ? value : "—"}`);
   if (state.rollCount > 0) {
@@ -989,21 +1000,31 @@ function renderHeader() {
 }
 
 function renderControls() {
+  const extraRollAvailable = isExtraRollAvailable();
   if (state.rivalThinking) {
     elements.rollLabel.textContent = "…";
   } else if (state.rollCount === 0) {
     elements.rollLabel.textContent = t.roll;
   } else if (state.rollCount < 3) {
     elements.rollLabel.textContent = t.reroll;
+  } else if (extraRollAvailable) {
+    elements.rollLabel.textContent = t.extraRoll;
   } else {
     elements.rollLabel.textContent = t.chooseScore;
   }
 
-  elements.rollButton.disabled = state.rollCount >= 3 || state.rolling || state.scoring || state.rivalThinking || state.paused;
+  const canRoll = state.rollCount < 3 || extraRollAvailable;
+  elements.rollButton.disabled = !canRoll || state.rolling || state.scoring || state.rivalThinking || state.paused;
+  elements.rollButton.classList.toggle("paid-roll-ready", extraRollAvailable);
+  elements.rollButton.classList.toggle("needs-coins", extraRollAvailable && wallet.coins < EXTRA_ROLL_COST);
   elements.newGameButton.disabled = state.rolling || state.scoring || state.rivalThinking || state.paused;
   elements.openShopButton.disabled = state.paused || monetizationBusy;
+  elements.rollMarksPanel.hidden = extraRollAvailable;
+  elements.extraRollPrice.hidden = !extraRollAvailable;
+  elements.extraRollPrice.setAttribute("aria-label", format(t.extraRollProgress, { current: state.paidRollCount + 1, total: MAX_PAID_ROLLS }));
+  elements.extraRollProgress.textContent = `${state.paidRollCount + 1}/${MAX_PAID_ROLLS}`;
   elements.rollMarks.forEach((mark, index) => {
-    mark.classList.toggle("used", index < state.rollCount);
+    mark.classList.toggle("used", index < Math.min(state.rollCount, 3));
     mark.classList.toggle("current", index === state.rollCount && state.rollCount < 3 && !state.rivalThinking);
   });
 }
@@ -1029,11 +1050,24 @@ function setMonetizationBusy(busy) {
   monetizationBusy = busy;
   elements.rulesRewardButton.disabled = busy;
   elements.shopRewardButton.disabled = busy;
-  elements.turnRewardButton.disabled = busy;
   elements.purchaseGrid.querySelectorAll(".purchase-card").forEach((button) => {
     button.disabled = busy;
   });
   renderControls();
+}
+
+function getPortalCurrencyIcon(product) {
+  if (typeof product?.getPriceCurrencyImage === "function") {
+    for (const size of ["svg", "small"]) {
+      try {
+        const imageUrl = product.getPriceCurrencyImage(size);
+        if (imageUrl) return imageUrl.startsWith("//") ? `https:${imageUrl}` : imageUrl;
+      } catch {
+        // Try the next supported format before falling back to the Yandex asset.
+      }
+    }
+  }
+  return PORTAL_CURRENCY_ICON_FALLBACK;
 }
 
 function renderPurchaseCatalog() {
@@ -1046,23 +1080,14 @@ function renderPurchaseCatalog() {
     if (catalogLoaded) button.hidden = !product;
     else button.hidden = false;
 
-    price.textContent = product?.price || productConfig?.fallbackPrice || "—";
-    currencyImage.hidden = true;
-    currencyImage.removeAttribute("src");
-    if (product?.getPriceCurrencyImage) {
-      try {
-        const imageUrl = product.getPriceCurrencyImage("small");
-        if (imageUrl) {
-          currencyImage.src = imageUrl;
-          currencyImage.alt = product.priceCurrencyCode || "";
-          currencyImage.hidden = false;
-        }
-      } catch {
-        // Text price from the SDK remains visible if its currency icon is unavailable.
-      }
-    }
+    const priceValue = product?.priceValue || productConfig?.fallbackPriceValue || "—";
+    const currencyCode = product?.priceCurrencyCode || "YAN";
+    price.textContent = priceValue;
+    currencyImage.src = getPortalCurrencyIcon(product);
+    currencyImage.alt = currencyCode;
+    currencyImage.hidden = false;
     button.disabled = monetizationBusy;
-    if (product) button.setAttribute("aria-label", `${product.title}. ${product.price}`);
+    button.setAttribute("aria-label", `${product?.title || `${productConfig?.coins || ""} ${t.coinsShort}`}. ${product?.price || `${priceValue} ${currencyCode}`}`);
   });
 
   const hasVisibleProducts = [...elements.purchaseGrid.querySelectorAll(".purchase-card")].some((button) => !button.hidden);
@@ -1212,33 +1237,9 @@ async function showRewardedAd() {
   });
 }
 
-async function startWithRulesReward() {
+async function startWithMandatoryReward() {
   closeModal(elements.rulesModal);
   await showRewardedAd();
-}
-
-function finishTurnRewardOffer() {
-  const resolve = turnRewardResolver;
-  turnRewardResolver = null;
-  closeModal(elements.turnRewardModal);
-  resolve?.();
-}
-
-async function acceptTurnReward() {
-  stopGameplay();
-  closeModal(elements.turnRewardModal);
-  await showRewardedAd();
-  const resolve = turnRewardResolver;
-  turnRewardResolver = null;
-  resolve?.();
-}
-
-function offerTurnReward() {
-  if (turnRewardResolver) return Promise.resolve();
-  return new Promise((resolve) => {
-    turnRewardResolver = resolve;
-    openModal(elements.turnRewardModal);
-  });
 }
 
 function startGameplay() {
@@ -1254,7 +1255,30 @@ function stopGameplay() {
 }
 
 async function rollDice() {
-  if (state.rollCount >= 3 || state.rolling || state.scoring || state.rivalThinking || state.paused) return;
+  const paidRoll = state.rollCount >= 3;
+  if ((paidRoll && !isExtraRollAvailable()) || state.rolling || state.scoring || state.rivalThinking || state.paused) return;
+
+  if (paidRoll && wallet.coins < EXTRA_ROLL_COST) {
+    renderPurchaseCatalog();
+    openModal(elements.shopModal);
+    showToast(t.needCoinsForRoll);
+    return;
+  }
+
+  if (paidRoll) {
+    state.rolling = true;
+    render();
+    const spent = await spendCoins(EXTRA_ROLL_COST);
+    if (!spent) {
+      state.rolling = false;
+      render();
+      return;
+    }
+    state.paidRollCount += 1;
+    state.rolling = false;
+    showToast(format(t.extraRollBought, { coins: EXTRA_ROLL_COST }));
+  }
+
   startGameplay();
   const heldDice = [...state.held];
   const finalDice = state.dice.map((value, index) => heldDice[index] ? value : randomDie());
@@ -1263,7 +1287,7 @@ async function rollDice() {
 }
 
 function toggleHold(index) {
-  if (state.rollCount === 0 || state.rollCount >= 3 || state.rolling || state.scoring || state.rivalThinking || state.paused) return;
+  if (!canAdjustHeldDice() || state.rolling || state.scoring || state.rivalThinking || state.paused) return;
   state.held[index] = !state.held[index];
   playHoldSound(state.held[index]);
   render();
@@ -1296,7 +1320,7 @@ async function scorePlayerCategory(categoryId) {
   showToast(bonusEarned ? t.yahtzeeBonus : format(t.playerScored, { category: t.categoryNames[categoryId], score }));
 
   const turnProgress = await registerCompletedPlayerTurn();
-  if (turnProgress.rewardDue) await offerTurnReward();
+  if (turnProgress.rewardDue) await showRewardedAd();
 
   const token = ++rivalTurnToken;
   await wait(260);
@@ -1327,6 +1351,7 @@ async function playRivalTurn(token) {
 
   const result = simulateRivalTurn(state.rivalScores);
   state.rollCount = 0;
+  state.paidRollCount = 0;
   state.dice = [1, 2, 3, 4, 5];
   state.held = [false, false, false, false, false];
   render();
@@ -1357,6 +1382,7 @@ async function playRivalTurn(token) {
   state.lastRivalCategory = result.categoryId;
   state.rivalThinking = false;
   state.rollCount = 0;
+  state.paidRollCount = 0;
   state.dice = [1, 2, 3, 4, 5];
   state.held = [false, false, false, false, false];
   elements.app.classList.remove("is-scoring");
@@ -1383,13 +1409,17 @@ function finishMatch() {
   elements.finishPlayerScore.textContent = playerScore;
   elements.finishRivalScore.textContent = rivalScore;
   elements.finishRivalName.textContent = state.rivalNick;
-  if (playerScore > rivalScore) {
+  const playerWon = playerScore > rivalScore;
+  elements.finishCard.classList.toggle("is-victory", playerWon);
+  elements.victoryReward.hidden = !playerWon;
+  elements.finishMessage.hidden = playerWon;
+  if (playerWon) {
     elements.finishTitle.textContent = t.victory;
     if (!state.victoryRewardGranted) {
       state.victoryRewardGranted = true;
       void addCoins(VICTORY_REWARD_COINS);
     }
-    elements.finishMessage.textContent = `${t.victoryText} ${t.victoryRewardText}`;
+    elements.finishMessage.textContent = "";
   } else if (playerScore < rivalScore) {
     elements.finishTitle.textContent = t.defeat;
     elements.finishMessage.textContent = format(t.defeatText, { points: difference });
@@ -1488,14 +1518,12 @@ function attachEvents() {
     openModal(elements.shopModal);
   });
   elements.footerRulesButton.addEventListener("click", () => openModal(elements.rulesModal));
-  elements.rulesRewardButton.addEventListener("click", () => { void startWithRulesReward(); });
+  elements.rulesRewardButton.addEventListener("click", () => { void startWithMandatoryReward(); });
   elements.shopRewardButton.addEventListener("click", () => { void showRewardedAd(); });
   elements.purchaseGrid.addEventListener("click", (event) => {
     const purchaseButton = event.target.closest(".purchase-card[data-product-id]");
     if (purchaseButton) void purchaseCoins(purchaseButton.dataset.productId);
   });
-  elements.turnRewardButton.addEventListener("click", () => { void acceptTurnReward(); });
-  elements.skipTurnRewardButton.addEventListener("click", finishTurnRewardOffer);
   elements.newGameButton.addEventListener("click", requestReset);
   elements.confirmResetButton.addEventListener("click", resetMatch);
   elements.playAgainButton.addEventListener("click", resetMatch);
@@ -1503,16 +1531,13 @@ function attachEvents() {
   document.addEventListener("pointerdown", (event) => {
     if (!event.target.closest(".settings-control")) setSettingsOpen(false);
   }, { passive: true });
-  document.querySelectorAll("[data-close-rules]").forEach((button) => button.addEventListener("click", () => closeModal(elements.rulesModal)));
   document.querySelectorAll("[data-close-shop]").forEach((button) => button.addEventListener("click", () => closeModal(elements.shopModal)));
   document.querySelectorAll("[data-close-reset]").forEach((button) => button.addEventListener("click", () => closeModal(elements.resetModal)));
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       if (!elements.settingsPanel.hidden) setSettingsOpen(false);
-      else if (!elements.turnRewardModal.hidden) finishTurnRewardOffer();
       else if (!elements.shopModal.hidden) closeModal(elements.shopModal);
-      else if (!elements.rulesModal.hidden) closeModal(elements.rulesModal);
       else if (!elements.resetModal.hidden) closeModal(elements.resetModal);
       return;
     }

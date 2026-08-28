@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f08c77" />
     <meta name="description" content="Ятзи — быстрая дуэль в кости с виртуальным соперником." />
     <title>Ятзи — быстрая дуэль</title>
-    <link rel="stylesheet" href="styles.css?v=1.7.0" />
+    <link rel="stylesheet" href="styles.css?v=1.8.2" />
   </head>
   <body>
     <div class="ambient-particles" aria-hidden="true">
@@ -73,6 +73,7 @@
       <button class="roll-button" id="rollButton" type="button">
         <span class="roll-label" id="rollLabel">БРОСИТЬ</span>
         <span class="roll-marks" id="rollMarks" aria-label="Броски"><i>1</i><i>2</i><i>3</i></span>
+        <span class="extra-roll-price" id="extraRollPrice" hidden><span class="mini-coin" aria-hidden="true">★</span><strong>50</strong><small id="extraRollProgress">1/3</small></span>
       </button>
 
       <footer class="game-footer">
@@ -83,9 +84,8 @@
     </main>
 
     <div class="modal" id="rulesModal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle" hidden>
-      <div class="modal-backdrop" data-close-rules></div>
+      <div class="modal-backdrop"></div>
       <section class="modal-card rules-card tutorial-card">
-        <button class="modal-close" type="button" data-close-rules aria-label="Закрыть">×</button>
         <header class="tutorial-header">
           <span class="modal-die" aria-hidden="true">⚄</span>
           <div>
@@ -117,13 +117,7 @@
         </div>
 
         <div class="tutorial-goal"><span aria-hidden="true">★</span><div><strong data-i18n="tutorialGoalTitle">Как победить?</strong><p data-i18n="tutorialGoal">Заполни 13 клеток и набери больше очков, чем соперник.</p></div></div>
-        <div class="tutorial-actions">
-          <button class="modal-primary tutorial-start" id="rulesRewardButton" type="button" data-autofocus>
-            <span data-i18n="playWithReward">ИГРАТЬ — РЕКЛАМА</span>
-            <strong><span class="mini-coin" aria-hidden="true">★</span> +10</strong>
-          </button>
-          <button class="text-button" type="button" data-close-rules data-i18n="playWithoutReward">Играть без бонуса</button>
-        </div>
+        <button class="modal-primary tutorial-start" id="rulesRewardButton" type="button" data-autofocus data-i18n="continueGame">ПОНЯТНО — ИГРАТЬ!</button>
       </section>
     </div>
 
@@ -133,16 +127,12 @@
         <button class="modal-close" type="button" data-close-shop aria-label="Закрыть">×</button>
         <header class="shop-header">
           <span class="shop-coin-icon" aria-hidden="true">★</span>
-          <div>
-            <p class="modal-eyebrow" data-i18n="shopEyebrow">КОШЕЛЁК</p>
-            <h1 id="shopTitle" data-i18n="shopTitle">Пополнить монеты</h1>
-            <p data-i18n="shopIntro">Смотрите рекламу или выберите набор.</p>
-          </div>
+          <h1 id="shopTitle" data-i18n="shopTitle">Пополнить монеты</h1>
         </header>
 
         <button class="reward-ad-card" id="shopRewardButton" type="button">
           <span class="reward-play" aria-hidden="true">▶</span>
-          <span><strong data-i18n="watchAd">Смотреть рекламу</strong><small data-i18n="watchAdHint">Получите награду после полного просмотра</small></span>
+          <strong data-i18n="watchAd">Смотреть рекламу</strong>
           <b><span class="mini-coin" aria-hidden="true">★</span> +10</b>
         </button>
 
@@ -151,44 +141,27 @@
           <button class="purchase-card" type="button" data-product-id="coins_50">
             <span class="coin-stack coin-stack-small" aria-hidden="true"><i></i><i></i><i></i></span>
             <strong>50 <span data-i18n="coinsShort">монет</span></strong>
-            <span class="purchase-price"><span data-price>49 YAN</span><img data-currency-image alt="" hidden /></span>
+            <span class="purchase-price"><span data-price>49</span><img data-currency-image src="https://yastatic.net/s3/games-static/static-data/images/payments/sdk/currency-icon-s@2x.png" alt="" /></span>
           </button>
           <button class="purchase-card popular" type="button" data-product-id="coins_200">
             <em data-i18n="popular">ВЫГОДНО</em>
             <span class="coin-stack" aria-hidden="true"><i></i><i></i><i></i></span>
             <strong>200 <span data-i18n="coinsShort">монет</span></strong>
-            <span class="purchase-price"><span data-price>99 YAN</span><img data-currency-image alt="" hidden /></span>
+            <span class="purchase-price"><span data-price>99</span><img data-currency-image src="https://yastatic.net/s3/games-static/static-data/images/payments/sdk/currency-icon-s@2x.png" alt="" /></span>
           </button>
           <button class="purchase-card" type="button" data-product-id="coins_500">
             <span class="coin-stack coin-stack-large" aria-hidden="true"><i></i><i></i><i></i></span>
             <strong>500 <span data-i18n="coinsShort">монет</span></strong>
-            <span class="purchase-price"><span data-price>199 YAN</span><img data-currency-image alt="" hidden /></span>
+            <span class="purchase-price"><span data-price>199</span><img data-currency-image src="https://yastatic.net/s3/games-static/static-data/images/payments/sdk/currency-icon-s@2x.png" alt="" /></span>
           </button>
           <button class="purchase-card best-value" type="button" data-product-id="coins_1000">
             <em data-i18n="bestValue">ЛУЧШАЯ ЦЕНА</em>
             <span class="coin-stack coin-stack-xl" aria-hidden="true"><i></i><i></i><i></i></span>
             <strong>1000 <span data-i18n="coinsShort">монет</span></strong>
-            <span class="purchase-price"><span data-price>349 YAN</span><img data-currency-image alt="" hidden /></span>
+            <span class="purchase-price"><span data-price>349</span><img data-currency-image src="https://yastatic.net/s3/games-static/static-data/images/payments/sdk/currency-icon-s@2x.png" alt="" /></span>
           </button>
         </div>
         <p class="shop-note" id="shopNote" data-i18n="shopNote">Цены и валюта загружаются из Яндекс Игр.</p>
-      </section>
-    </div>
-
-    <div class="modal" id="turnRewardModal" role="dialog" aria-modal="true" aria-labelledby="turnRewardTitle" hidden>
-      <div class="modal-backdrop"></div>
-      <section class="modal-card compact-card reward-offer-card">
-        <span class="reward-gift" aria-hidden="true">★</span>
-        <p class="modal-eyebrow" data-i18n="turnRewardEyebrow">БОНУС ЗА 10 ХОДОВ</p>
-        <h1 id="turnRewardTitle" data-i18n="turnRewardTitle">Забрать 10 монет?</h1>
-        <p data-i18n="turnRewardText">Посмотрите рекламу и получите награду. Партия продолжится в любом случае.</p>
-        <div class="reward-offer-actions">
-          <button class="modal-primary reward-offer-button" id="turnRewardButton" type="button">
-            <span data-i18n="watchAd">Смотреть рекламу</span>
-            <strong><span class="mini-coin" aria-hidden="true">★</span> +10</strong>
-          </button>
-          <button class="text-button" id="skipTurnRewardButton" type="button" data-i18n="continueWithoutReward">Продолжить без бонуса</button>
-        </div>
       </section>
     </div>
 
@@ -209,10 +182,14 @@
 
     <div class="modal" id="finishModal" role="dialog" aria-modal="true" aria-labelledby="finishTitle" hidden>
       <div class="modal-backdrop"></div>
-      <section class="modal-card finish-card">
+      <section class="modal-card finish-card" id="finishCard">
         <div class="finish-crown" aria-hidden="true">✦</div>
         <p class="modal-eyebrow" data-i18n="matchComplete">ДУЭЛЬ ЗАВЕРШЕНА</p>
         <h1 id="finishTitle">Победа!</h1>
+        <div class="victory-reward" id="victoryReward" role="img" aria-label="+25 монет" hidden>
+          <span class="victory-coin-stack" aria-hidden="true"><i></i><i></i><i></i></span>
+          <strong id="victoryRewardAmount">+25</strong>
+        </div>
         <div class="final-versus">
           <div><span data-i18n="you">ВЫ</span><strong id="finishPlayerScore">0</strong></div><b>:</b>
           <div><span id="finishRivalName">Mila</span><strong id="finishRivalScore">0</strong></div>
@@ -224,6 +201,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="category-tooltip" id="categoryTooltip" role="tooltip" hidden></div>
-    <script type="module" src="app.js?v=1.7.0"></script>
+    <script type="module" src="app.js?v=1.8.2"></script>
   </body>
 </html>
