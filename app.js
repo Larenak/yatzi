@@ -8,8 +8,8 @@ import {
   isJokerRoll,
   isYahtzee,
   simulateRivalTurn,
-} from "./game.js?v=1.8.6";
-import { isCyrillicFree, resolveGameLanguage } from "./i18n.js?v=1.8.6";
+} from "./game.js?v=1.8.7";
+import { isCyrillicFree, resolveGameLanguage } from "./i18n.js?v=1.8.7";
 import {
   AD_BONUS_COINS,
   EXTRA_ROLL_COST,
@@ -22,9 +22,9 @@ import {
   normalizeWallet,
   recordProcessedPurchase,
   spendWalletCoins,
-} from "./monetization.js?v=1.8.6";
+} from "./monetization.js?v=1.8.7";
 
-const PORTAL_CURRENCY_ICON_FALLBACK = "https://yastatic.net/s3/games-static/static-data/images/payments/sdk/currency-icon-s@2x.png";
+const PORTAL_CURRENCY_ICON_FALLBACK = "./currency-icon.svg";
 
 const translations = {
   ru: {
@@ -1645,7 +1645,7 @@ function attachEvents() {
 function getSdkSource() {
   const hostname = window.location.hostname;
   if (!hostname || hostname === "localhost" || hostname === "127.0.0.1") return null;
-  return hostname.includes("yandex") || hostname.includes("yastatic") ? "/sdk.js" : "https://sdk.games.s3.yandex.net/sdk.js";
+  return "/sdk.js";
 }
 
 async function loadYandexSdk() {

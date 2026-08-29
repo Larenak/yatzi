@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="">
+  <defs>
+    <linearGradient id="coin" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffe98d"/>
+      <stop offset="1" stop-color="#e6a824"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="27" fill="#5b4650" opacity=".22"/>
+  <circle cx="32" cy="30" r="25" fill="url(#coin)" stroke="#b87918" stroke-width="3"/>
+  <circle cx="32" cy="30" r="18" fill="none" stroke="#fff2ac" stroke-width="2" opacity=".75"/>
+  <path d="m32 17 3.7 7.4 8.2 1.2-5.9 5.8 1.4 8.1-7.4-3.9-7.4 3.9 1.4-8.1-5.9-5.8 8.2-1.2Z" fill="#fff7cf" stroke="#bf7e17" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>
