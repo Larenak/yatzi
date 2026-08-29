@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f08c77" />
     <meta name="description" content="Ятзи — быстрая дуэль в кости с виртуальным соперником." />
     <title>Ятзи — быстрая дуэль</title>
-    <link rel="stylesheet" href="styles.css?v=1.8.2" />
+    <link rel="stylesheet" href="styles.css?v=1.8.6" />
   </head>
   <body>
     <div class="ambient-particles" aria-hidden="true">
@@ -30,7 +30,7 @@
           </div>
         </div>
 
-        <section class="duel-score" aria-label="Счёт дуэли">
+        <section class="duel-score" aria-label="Счёт дуэли" data-i18n-aria-label="duelScore">
           <span class="mode-ribbon" data-i18n="mode">БЫСТРАЯ ДУЭЛЬ</span>
           <div class="competitor player-competitor"><span data-i18n="you">ВЫ</span><strong id="playerTotal">0</strong></div>
           <div class="versus-mark">VS</div>
@@ -52,7 +52,7 @@
         <strong id="turnStatus">ВАШ ХОД</strong>
       </section>
 
-      <section class="score-board" aria-label="Таблица очков">
+      <section class="score-board" aria-label="Таблица очков" data-i18n-aria-label="scoreBoard">
         <div class="board-head">
           <span data-i18n="categories">КОМБИНАЦИИ</span>
           <div class="score-key">
@@ -61,18 +61,18 @@
           </div>
         </div>
         <div class="score-grid">
-          <section class="score-section upper-section" id="upperScoreList" aria-label="Верхняя секция"></section>
-          <section class="score-section lower-section" id="lowerScoreList" aria-label="Комбинации"></section>
+          <section class="score-section upper-section" id="upperScoreList" aria-label="Верхняя секция" data-i18n-aria-label="upperSection"></section>
+          <section class="score-section lower-section" id="lowerScoreList" aria-label="Комбинации" data-i18n-aria-label="lowerSection"></section>
         </div>
       </section>
 
-      <section class="dice-area" aria-label="Игровые кости">
-        <div class="dice-rack" id="diceStage" aria-label="Игровые кости"></div>
+      <section class="dice-area" aria-label="Игровые кости" data-i18n-aria-label="diceArea">
+        <div class="dice-rack" id="diceStage" aria-label="Игровые кости" data-i18n-aria-label="diceArea"></div>
       </section>
 
       <button class="roll-button" id="rollButton" type="button">
         <span class="roll-label" id="rollLabel">БРОСИТЬ</span>
-        <span class="roll-marks" id="rollMarks" aria-label="Броски"><i>1</i><i>2</i><i>3</i></span>
+        <span class="roll-marks" id="rollMarks" aria-label="Броски" data-i18n-aria-label="rolls"><i>1</i><i>2</i><i>3</i></span>
         <span class="extra-roll-price" id="extraRollPrice" hidden><span class="mini-coin" aria-hidden="true">★</span><strong>50</strong><small id="extraRollProgress">1/3</small></span>
       </button>
 
@@ -110,7 +110,7 @@
           </article>
           <article class="tutorial-step">
             <span class="tutorial-number">3</span>
-            <div class="tutorial-picture score-picture" aria-hidden="true"><span>ВЫ</span><strong>+18</strong></div>
+            <div class="tutorial-picture score-picture" aria-hidden="true"><span data-i18n="you">ВЫ</span><strong>+18</strong></div>
             <h2 data-i18n="step3Title">Запиши очки</h2>
             <p data-i18n="rule3">Нажми на свободную клетку в колонке «ВЫ». После этого ходит соперник.</p>
           </article>
@@ -124,7 +124,7 @@
     <div class="modal" id="shopModal" role="dialog" aria-modal="true" aria-labelledby="shopTitle" hidden>
       <div class="modal-backdrop" data-close-shop></div>
       <section class="modal-card shop-card">
-        <button class="modal-close" type="button" data-close-shop aria-label="Закрыть">×</button>
+        <button class="modal-close" type="button" data-close-shop aria-label="Закрыть" data-i18n-aria-label="close">×</button>
         <header class="shop-header">
           <span class="shop-coin-icon" aria-hidden="true">★</span>
           <h1 id="shopTitle" data-i18n="shopTitle">Пополнить монеты</h1>
@@ -168,7 +168,7 @@
     <div class="modal" id="resetModal" role="dialog" aria-modal="true" aria-labelledby="resetTitle" hidden>
       <div class="modal-backdrop" data-close-reset></div>
       <section class="modal-card compact-card">
-        <button class="modal-close" type="button" data-close-reset aria-label="Закрыть">×</button>
+        <button class="modal-close" type="button" data-close-reset aria-label="Закрыть" data-i18n-aria-label="close">×</button>
         <span class="modal-die restart-symbol" aria-hidden="true">↻</span>
         <p class="modal-eyebrow" data-i18n="newMatch">НОВАЯ ДУЭЛЬ</p>
         <h1 id="resetTitle" data-i18n="resetTitle">Начать заново?</h1>
@@ -185,7 +185,7 @@
       <section class="modal-card finish-card" id="finishCard">
         <div class="finish-crown" aria-hidden="true">✦</div>
         <p class="modal-eyebrow" data-i18n="matchComplete">ДУЭЛЬ ЗАВЕРШЕНА</p>
-        <h1 id="finishTitle">Победа!</h1>
+        <h1 id="finishTitle" data-i18n="victory">Победа!</h1>
         <div class="victory-reward" id="victoryReward" role="img" aria-label="+25 монет" hidden>
           <span class="victory-coin-stack" aria-hidden="true"><i></i><i></i><i></i></span>
           <strong id="victoryRewardAmount">+25</strong>
@@ -201,6 +201,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="category-tooltip" id="categoryTooltip" role="tooltip" hidden></div>
-    <script type="module" src="app.js?v=1.8.2"></script>
+    <script type="module" src="app.js?v=1.8.6"></script>
   </body>
 </html>

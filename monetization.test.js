@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  AD_REWARD_COINS,
+  AD_BONUS_COINS,
   COIN_PRODUCTS,
   EXTRA_ROLL_COST,
   MAX_PAID_ROLLS,
@@ -9,6 +9,7 @@ import {
   addWalletCoins,
   completePlayerTurn,
   getCoinProduct,
+  getInterstitialBonus,
   normalizeWallet,
   recordProcessedPurchase,
   spendWalletCoins,
@@ -30,12 +31,12 @@ test("wallet values are normalized and protected from negative balances", () => 
   assert.equal(spendWalletCoins({ coins: 49 }, 50).spent, false);
 });
 
-test("a mandatory rewarded ad becomes due on every tenth completed player turn", () => {
+test("a compensated interstitial becomes due on every tenth completed player turn", () => {
   let wallet = normalizeWallet(null);
   for (let turn = 1; turn <= 20; turn += 1) {
     const result = completePlayerTurn(wallet);
     wallet = result.wallet;
-    assert.equal(result.rewardDue, turn === 10 || turn === 20);
+    assert.equal(result.adDue, turn === 10 || turn === 20);
   }
   assert.equal(wallet.turnsSinceReward, 0);
 });
@@ -47,7 +48,9 @@ test("coin products and processed purchase tokens are deterministic", () => {
     [500, "199"],
     [1000, "349"],
   ]);
-  assert.equal(AD_REWARD_COINS, 10);
+  assert.equal(AD_BONUS_COINS, 10);
+  assert.equal(getInterstitialBonus(true), 10);
+  assert.equal(getInterstitialBonus(false), 0);
   assert.equal(VICTORY_REWARD_COINS, 25);
   assert.equal(EXTRA_ROLL_COST, 50);
   assert.equal(MAX_PAID_ROLLS, 3);

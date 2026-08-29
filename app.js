@@ -8,24 +8,28 @@ import {
   isJokerRoll,
   isYahtzee,
   simulateRivalTurn,
-} from "./game.js?v=1.8.2";
+} from "./game.js?v=1.8.6";
+import { isCyrillicFree, resolveGameLanguage } from "./i18n.js?v=1.8.6";
 import {
-  AD_REWARD_COINS,
+  AD_BONUS_COINS,
   EXTRA_ROLL_COST,
   MAX_PAID_ROLLS,
   VICTORY_REWARD_COINS,
   addWalletCoins,
   completePlayerTurn,
   getCoinProduct,
+  getInterstitialBonus,
   normalizeWallet,
   recordProcessedPurchase,
   spendWalletCoins,
-} from "./monetization.js?v=1.8.2";
+} from "./monetization.js?v=1.8.6";
 
 const PORTAL_CURRENCY_ICON_FALLBACK = "https://yastatic.net/s3/games-static/static-data/images/payments/sdk/currency-icon-s@2x.png";
 
 const translations = {
   ru: {
+    pageTitle: "Ятзи — быстрая дуэль",
+    metaDescription: "Ятзи — быстрая дуэль в кости с виртуальным соперником.",
     mode: "БЫСТРАЯ ДУЭЛЬ",
     you: "ВЫ",
     youShort: "вы",
@@ -37,6 +41,15 @@ const translations = {
     soundDisabled: "Выкл.",
     soundOn: "Выключить звук",
     soundOff: "Включить звук",
+    openSettings: "Открыть настройки",
+    restartMatch: "Начать заново",
+    duelScore: "Счёт дуэли",
+    scoreBoard: "Таблица очков",
+    upperSection: "Верхняя секция",
+    lowerSection: "Комбинации",
+    diceArea: "Игровые кости",
+    rolls: "Броски",
+    close: "Закрыть",
     paused: "Пауза",
     rulesEyebrow: "КАК ИГРАТЬ",
     rulesTitle: "Всего 3 простых шага",
@@ -114,6 +127,8 @@ const translations = {
     },
   },
   en: {
+    pageTitle: "Yatzy — quick duel",
+    metaDescription: "Yatzy — a quick dice duel against a virtual rival.",
     mode: "QUICK DUEL",
     you: "YOU",
     youShort: "you",
@@ -125,6 +140,15 @@ const translations = {
     soundDisabled: "Off",
     soundOn: "Mute sound",
     soundOff: "Turn sound on",
+    openSettings: "Open settings",
+    restartMatch: "Restart match",
+    duelScore: "Duel score",
+    scoreBoard: "Score board",
+    upperSection: "Upper section",
+    lowerSection: "Combinations",
+    diceArea: "Game dice",
+    rolls: "Rolls",
+    close: "Close",
     paused: "Paused",
     rulesEyebrow: "HOW TO PLAY",
     rulesTitle: "Only 3 easy steps",
@@ -680,12 +704,13 @@ function createInitialState() {
 }
 
 function pickRivalName() {
-  const choices = RIVAL_NAMES.filter((name) => name !== previousRival);
+  const languageNames = lang === "en" ? RIVAL_NAMES.filter(isCyrillicFree) : RIVAL_NAMES;
+  const choices = languageNames.filter((name) => name !== previousRival);
   return choices[Math.floor(Math.random() * choices.length)];
 }
 
 function getInitialLanguage() {
-  return (navigator.language || "ru").toLowerCase().startsWith("ru") ? "ru" : "en";
+  return resolveGameLanguage(navigator.language);
 }
 
 function format(template, values) {
@@ -837,13 +862,18 @@ async function animateScoreTransfer(categoryId, side, categoryScore, totalBefore
 
 function applyTranslations() {
   document.documentElement.lang = lang;
-  document.title = lang === "ru" ? "Ятзи — быстрая дуэль" : "Yatzy — quick duel";
+  document.title = t.pageTitle;
+  document.querySelector('meta[name="description"]')?.setAttribute("content", t.metaDescription);
   document.querySelectorAll("[data-i18n]").forEach((node) => {
     const translation = t[node.dataset.i18n];
     if (typeof translation === "string") node.textContent = translation;
   });
-  elements.settingsButton.setAttribute("aria-label", lang === "ru" ? "Открыть настройки" : "Open settings");
-  elements.newGameButton.setAttribute("aria-label", lang === "ru" ? "Начать заново" : "Restart match");
+  document.querySelectorAll("[data-i18n-aria-label]").forEach((node) => {
+    const translation = t[node.dataset.i18nAriaLabel];
+    if (typeof translation === "string") node.setAttribute("aria-label", translation);
+  });
+  elements.settingsButton.setAttribute("aria-label", t.openSettings);
+  elements.newGameButton.setAttribute("aria-label", t.restartMatch);
   elements.openShopButton.setAttribute("aria-label", t.topUpCoins);
   elements.victoryReward.setAttribute("aria-label", format(t.victoryRewardLabel, { coins: VICTORY_REWARD_COINS }));
   elements.victoryRewardAmount.textContent = `+${VICTORY_REWARD_COINS}`;
@@ -1211,7 +1241,7 @@ async function showRewardedAd() {
       render();
       setMonetizationBusy(false);
       if (ALL_MODALS.every((modal) => modal.hidden)) startGameplay();
-      if (rewarded) showToast(format(t.coinsAdded, { coins: AD_REWARD_COINS }));
+      if (rewarded) showToast(format(t.coinsAdded, { coins: AD_BONUS_COINS }));
       resolve(rewarded);
     };
 
@@ -1225,7 +1255,7 @@ async function showRewardedAd() {
           onRewarded: () => {
             if (rewarded) return;
             rewarded = true;
-            rewardTask = addCoins(AD_REWARD_COINS);
+            rewardTask = addCoins(AD_BONUS_COINS);
           },
           onClose: () => { void finish(); },
           onError: () => { void finish(); },
@@ -1237,9 +1267,58 @@ async function showRewardedAd() {
   });
 }
 
-async function startWithMandatoryReward() {
+async function showCompensatedInterstitial() {
+  if (monetizationBusy) return false;
+  setMonetizationBusy(true);
+  stopGameplay();
+  state.paused = true;
+  render();
+  await platformReadyPromise;
+  if (!ysdk?.adv?.showFullscreenAdv) {
+    state.paused = false;
+    render();
+    setMonetizationBusy(false);
+    if (ALL_MODALS.every((modal) => modal.hidden)) startGameplay();
+    showToast(t.adUnavailable);
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    let completed = false;
+
+    const finish = async (wasShown) => {
+      if (completed) return;
+      completed = true;
+      const bonus = getInterstitialBonus(wasShown);
+      if (bonus) await addCoins(bonus);
+      state.paused = false;
+      render();
+      setMonetizationBusy(false);
+      if (ALL_MODALS.every((modal) => modal.hidden)) startGameplay();
+      if (bonus) showToast(format(t.coinsAdded, { coins: bonus }));
+      resolve(Boolean(wasShown));
+    };
+
+    try {
+      ysdk.adv.showFullscreenAdv({
+        callbacks: {
+          onOpen: () => {
+            stopBackgroundMusic();
+            void audioEngine.context?.suspend();
+          },
+          onClose: (wasShown) => { void finish(wasShown === true); },
+          onError: () => { void finish(false); },
+        },
+      });
+    } catch {
+      void finish(false);
+    }
+  });
+}
+
+async function startWithMandatoryInterstitial() {
   closeModal(elements.rulesModal);
-  await showRewardedAd();
+  await showCompensatedInterstitial();
 }
 
 function startGameplay() {
@@ -1320,7 +1399,7 @@ async function scorePlayerCategory(categoryId) {
   showToast(bonusEarned ? t.yahtzeeBonus : format(t.playerScored, { category: t.categoryNames[categoryId], score }));
 
   const turnProgress = await registerCompletedPlayerTurn();
-  if (turnProgress.rewardDue) await showRewardedAd();
+  if (turnProgress.adDue) await showCompensatedInterstitial();
 
   const token = ++rivalTurnToken;
   await wait(260);
@@ -1518,7 +1597,7 @@ function attachEvents() {
     openModal(elements.shopModal);
   });
   elements.footerRulesButton.addEventListener("click", () => openModal(elements.rulesModal));
-  elements.rulesRewardButton.addEventListener("click", () => { void startWithMandatoryReward(); });
+  elements.rulesRewardButton.addEventListener("click", () => { void startWithMandatoryInterstitial(); });
   elements.shopRewardButton.addEventListener("click", () => { void showRewardedAd(); });
   elements.purchaseGrid.addEventListener("click", (event) => {
     const purchaseButton = event.target.closest(".purchase-card[data-product-id]");
@@ -1589,10 +1668,15 @@ async function initPlatform() {
   if (!YaGames) return;
   try {
     ysdk = await YaGames.init();
-    const nextLang = ysdk?.environment?.i18n?.lang === "ru" ? "ru" : "en";
+    const nextLang = resolveGameLanguage(ysdk?.environment?.i18n?.lang);
     if (nextLang !== lang) {
       lang = nextLang;
       t = translations[lang];
+      if (lang === "en" && !isCyrillicFree(state.rivalNick)) {
+        previousRival = state.rivalNick;
+        state.rivalNick = pickRivalName();
+        previousRival = state.rivalNick;
+      }
       render();
     }
     ysdk.on?.("game_api_pause", () => {

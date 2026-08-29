@@ -1,4 +1,4 @@
-export const AD_REWARD_COINS = 10;
+export const AD_BONUS_COINS = 10;
 export const VICTORY_REWARD_COINS = 25;
 export const EXTRA_ROLL_COST = 50;
 export const MAX_PAID_ROLLS = 3;
@@ -50,8 +50,12 @@ export function completePlayerTurn(value) {
   const nextTurns = wallet.turnsSinceReward + 1;
   return {
     wallet: { ...wallet, turnsSinceReward: nextTurns >= REWARD_TURN_INTERVAL ? 0 : nextTurns },
-    rewardDue: nextTurns >= REWARD_TURN_INTERVAL,
+    adDue: nextTurns >= REWARD_TURN_INTERVAL,
   };
+}
+
+export function getInterstitialBonus(wasShown) {
+  return wasShown === true ? AD_BONUS_COINS : 0;
 }
 
 export function recordProcessedPurchase(value, purchaseToken) {
